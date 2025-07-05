@@ -50,6 +50,8 @@ const AgroScanApp = () => {
   const [knowledgeSearch, setKnowledgeSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [darkMode, setDarkMode] = useState(false);
+  const [language, setLanguage] = useState<'fr' | 'en'>('fr');
+  const [themeColor, setThemeColor] = useState<'green' | 'blue' | 'purple' | 'teal'>('green');
   const [userLocation, setUserLocation] = useState({
     latitude: null, 
     longitude: null, 
@@ -92,6 +94,47 @@ const AgroScanApp = () => {
   useEffect(() => {
     document.documentElement.classList.toggle('dark', darkMode);
   }, [darkMode]);
+
+  useEffect(() => {
+    const colorMap = {
+      green: ['#16a34a', '#15803d'],
+      blue: ['#2563eb', '#1e40af'],
+      purple: ['#7e22ce', '#581c87'],
+      teal: ['#14b8a6', '#0f766e'],
+    } as const;
+    const [from, to] = colorMap[themeColor];
+    document.documentElement.style.setProperty('--theme-from', from);
+    document.documentElement.style.setProperty('--theme-to', to);
+  }, [themeColor]);
+
+  const translations = {
+    fr: {
+      knowledgeTitle: 'Base de Connaissances',
+      searchPlaceholder: 'Rechercher dans la base de connaissances...',
+      categories: {
+        all: 'Tout',
+        pest_control: 'Ravageurs',
+        disease_control: 'Maladies',
+        soil_management: 'Sol',
+      },
+      consult: 'Consulter',
+      downloadable: 'Téléchargeable',
+    },
+    en: {
+      knowledgeTitle: 'Knowledge Base',
+      searchPlaceholder: 'Search the knowledge base...',
+      categories: {
+        all: 'All',
+        pest_control: 'Pests',
+        disease_control: 'Diseases',
+        soil_management: 'Soil',
+      },
+      consult: 'View',
+      downloadable: 'Downloadable',
+    },
+  } as const;
+
+  const t = translations[language];
 
   const fileInputRef = useRef(null);
   const cnnModelRef = useRef<tf.GraphModel | null>(null);
@@ -966,7 +1009,25 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
           >
             {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
           </button>
-          <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 text-center">
+          <select
+            value={language}
+            onChange={e => setLanguage(e.target.value as 'fr' | 'en')}
+            className="absolute top-3 left-3 text-black text-sm rounded"
+          >
+            <option value="fr">FR</option>
+            <option value="en">EN</option>
+          </select>
+          <select
+            value={themeColor}
+            onChange={e => setThemeColor(e.target.value as 'green' | 'blue' | 'purple' | 'teal')}
+            className="absolute top-3 left-16 text-black text-sm rounded"
+          >
+            <option value="green">Vert</option>
+            <option value="blue">Bleu</option>
+            <option value="purple">Violet</option>
+            <option value="teal">Turquoise</option>
+          </select>
+          <div className="text-white p-6 text-center" style={{ background: 'linear-gradient(to right, var(--theme-from), var(--theme-to))' }}>
             <div className="flex items-center justify-center mb-4">
               <Leaf className="w-12 h-12 mr-3" />
               <h1 className="text-3xl font-bold">AgroScan</h1>
@@ -1308,7 +1369,14 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
                 {currentDocument.content}
               </div>
             </div>
-
+            {currentDocument.images && (
+              <div className="mt-4 grid grid-cols-2 gap-2">
+                {currentDocument.images.map(img => (
+                  <img key={img} src={`/knowledge/${img}`} alt={img} className="w-full h-32 object-cover rounded" />
+                ))}
+              </div>
+            )}
+            
             {/* Produits liés */}
             {currentDocument.relatedProducts && currentDocument.relatedProducts.length > 0 && (
               <div className="mt-8 p-4 bg-blue-50 rounded-lg">
@@ -1342,7 +1410,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
-        <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-4 flex items-center justify-between">
+        <div className="text-white p-4 flex items-center justify-between" style={{ background: 'linear-gradient(to right, var(--theme-from), var(--theme-to))' }}>
           <div className="flex items-center">
             <Leaf className="w-8 h-8 mr-3" />
             <div>
@@ -1500,7 +1568,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
 
           {activeTab === 'knowledge' && (
             <div className="p-6 space-y-6">
-              <h2 className="text-2xl font-bold text-gray-800">Base de Connaissances</h2>
+              <h2 className="text-2xl font-bold text-gray-800">{t.knowledgeTitle}</h2>
               
               {/* Barre de recherche et filtres */}
               <div className="space-y-4">
@@ -1508,7 +1576,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
                   <Search className="w-5 h-5 absolute left-3 top-3 text-gray-400" />
                   <input
                     type="text"
-                    placeholder="Rechercher dans la base de connaissances..."
+                    placeholder={t.searchPlaceholder}
                     value={knowledgeSearch}
                     onChange={(e) => setKnowledgeSearch(e.target.value)}
                     className="w-full pl-10 pr-4 py-3 border rounded-lg focus:ring-2 focus:ring-green-500 focus:border-transparent"
@@ -1517,10 +1585,10 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
                 
                 <div className="flex space-x-2 overflow-x-auto">
                   {[
-                    { id: 'all', label: 'Tout' },
-                    { id: 'pest_control', label: 'Ravageurs' },
-                    { id: 'disease_control', label: 'Maladies' },
-                    { id: 'soil_management', label: 'Sol' }
+                    { id: 'all', label: t.categories.all },
+                    { id: 'pest_control', label: t.categories.pest_control },
+                    { id: 'disease_control', label: t.categories.disease_control },
+                    { id: 'soil_management', label: t.categories.soil_management }
                   ].map(category => (
                     <button
                       key={category.id}
@@ -1541,6 +1609,9 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
               <div className="space-y-4">
                 {filteredKnowledge.map((doc) => (
                   <div key={doc.id} className="bg-white border rounded-lg p-4 hover:shadow-md transition-shadow">
+                                        {doc.images && doc.images.length > 0 && (
+                      <img src={`/knowledge/${doc.images[0]}`} alt={doc.title} className="w-full h-32 object-cover rounded mb-3" />
+                    )}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
                         <h3 className="font-semibold text-gray-800 mb-1">{doc.title}</h3>
@@ -1556,7 +1627,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
                           </span>
                           {doc.downloadable && (
                             <span className="text-xs bg-orange-100 text-orange-700 px-2 py-1 rounded">
-                              Téléchargeable
+                              {t.downloadable}
                             </span>
                           )}
                         </div>
@@ -1591,7 +1662,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
                         }}
                         className="flex items-center text-green-600 hover:text-green-700 font-medium"
                       >
-                        Consulter
+                        {t.consult}
                         <ArrowRight className="w-4 h-4 ml-1" />
                       </button>
                     </div>
