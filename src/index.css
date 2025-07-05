@@ -5,3 +5,8 @@
 html.dark {
   @apply bg-gray-900 text-gray-100;
 }
+
+:root {
+  --theme-from: #16a34a;
+  --theme-to: #15803d;
+}
