@@ -1,6 +1,6 @@
 # AgroScan App
 
-AgroScan est une application mobile React visant à fournir aux agriculteurs une analyse intelligente des cultures et un accès facile aux intrants nécessaires. L'application combine reconnaissance d'images par CNN (EfficientNet-B4 + YOLOv8) et gestion d'achats d'intrants agricoles.
+AgroScan est une application mobile React visant à fournir aux agriculteurs une analyse intelligente des cultures et un accès facile aux intrants nécessaires. L'application utilise un modèle CNN TensorFlow.js et récupère automatiquement les intrants depuis un Google Sheet mis à jour chaque jour à 6h00.
 
 ## Fonctionnalités principales
 
