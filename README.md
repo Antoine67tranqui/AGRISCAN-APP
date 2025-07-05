@@ -41,6 +41,16 @@ cp .env.example .env
 # éditer les valeurs VITE_GOOGLE_SHEET_ID et VITE_OPENCAGE_API_KEY
 ```
 
+Pour charger la base de données fournie à l'adresse Google Sheets suivante :
+[https://docs.google.com/spreadsheets/d/1yhiNXxU9azc78Z5rvUnJ6EKLEVZMZk5HeWugrqBn6_g](https://docs.google.com/spreadsheets/d/1yhiNXxU9azc78Z5rvUnJ6EKLEVZMZk5HeWugrqBn6_g),
+indiquez simplement l'identifiant dans votre fichier `.env` :
+
+```bash
+VITE_GOOGLE_SHEET_ID=1yhiNXxU9azc78Z5rvUnJ6EKLEVZMZk5HeWugrqBn6_g
+```
+
+L'application récupérera toutes les feuilles du classeur et mettra à jour le catalogue d'intrants automatiquement chaque jour à **06h00**.
+
 Le composant principal se trouve dans `src/App.tsx`. Pour générer une version de
 production utilisez `npm run build`.
 
