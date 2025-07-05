@@ -22,18 +22,20 @@ Ce dépôt contient un composant unique volumineux (`agroscan-app.tsx`). Pour am
 
 Une proposition plus détaillée est disponible dans [`docs/REDESIGN.md`](docs/REDESIGN.md).
 
-## Démarrage rapide (version actuelle)
+## Démarrage rapide
 
-L'application n'inclut pas encore de configuration de build. Pour tester le composant actuel, créez un environnement React (ex. `create-react-app` ou `vite`) puis importez `agroscan-app.tsx`.
+Cette version du dépôt inclut désormais une configuration Vite et Tailwind CSS.
+Après installation des dépendances vous pouvez lancer l'application en mode
+développement :
 
 ```
-# Exemple rapide avec Vite
-npm create vite@latest agroscan-demo -- --template react-ts
-cd agroscan-demo
 npm install
-# Copier agroscan-app.tsx dans src/
-# Remplacer App.tsx par l'import du composant
 npm run dev
 ```
 
-Des tests automatisés ne sont pas fournis. Vous pouvez ajouter votre propre configuration Jest ou Vitest pour garantir la non-régression lors du futur refactoring.
+Le composant principal se trouve dans `src/App.tsx`. Pour générer une version de
+production utilisez `npm run build`.
+
+Des tests automatisés ne sont pas fournis. Vous pouvez ajouter votre propre
+configuration Jest ou Vitest pour garantir la non-régression lors de futurs
+refactorings.
