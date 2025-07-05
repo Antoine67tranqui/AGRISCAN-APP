@@ -494,22 +494,46 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
   // Produits récupérés depuis Google Sheets
   const [realProductsData, setRealProductsData] = useState([]);
 
+  const fetchSheetList = async (sheetId: string) => {
+    const url = `https://spreadsheets.google.com/feeds/worksheets/${sheetId}/public/basic?alt=json`;
+    const res = await fetch(url);
+    const data = await res.json();
+    return data.feed.entry.map((entry: any) => {
+      const gidMatch = entry.id.$t.match(/gid%3D(\d+)/);
+      return {
+        gid: gidMatch ? gidMatch[1] : '0',
+        title: entry.title.$t,
+      };
+    });
+  };
+
+  const fetchSheetData = async (sheetId: string, gid: string) => {
+    const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json&gid=${gid}`;
+    const res = await fetch(url);
+    const text = await res.text();
+    const json = JSON.parse(text.substring(47).slice(0, -2));
+    const cols = json.table.cols.map((c: any) => c.label);
+    return json.table.rows.map((row: any) => {
+      const obj: any = {};
+      row.c.forEach((cell: any, i: number) => {
+        obj[cols[i]] = cell ? cell.v : '';
+      });
+      return obj;
+    });
+  };
+
   const fetchProductsFromSheet = async () => {
     try {
       const sheetId = import.meta.env.VITE_GOOGLE_SHEET_ID;
-      const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
-      const res = await fetch(url);
-      const text = await res.text();
-      const json = JSON.parse(text.substring(47).slice(0, -2));
-      const cols = json.table.cols.map((c) => c.label);
-      const products = json.table.rows.map((row) => {
-        const obj = {} as any;
-        row.c.forEach((cell: any, i: number) => {
-          obj[cols[i]] = cell ? cell.v : '';
-        });
-        return obj;
-      });
-      setRealProductsData(products);
+      const sheets = await fetchSheetList(sheetId);
+      let allProducts: any[] = [];
+      for (const sheet of sheets) {
+        const products = await fetchSheetData(sheetId, sheet.gid);
+        allProducts = allProducts.concat(
+          products.map((p: any) => ({ ...p, shop: sheet.title }))
+        );
+      }
+      setRealProductsData(allProducts);
     } catch (e) {
       console.error('Erreur chargement Google Sheet', e);
     }
