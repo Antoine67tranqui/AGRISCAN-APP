@@ -1,6 +1,41 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { Camera, Leaf, BarChart3, User, Bug, Mountain, AlertTriangle, CheckCircle, XCircle, Upload, Info, Book, Bell, Settings, MapPin, Calendar, TrendingUp, ShoppingCart, Star, Navigation, CloudRain, Thermometer, Droplets, ArrowRight, Download, FileText, Image as ImageIcon, Video, Search, Filter, ExternalLink } from 'lucide-react';
+import {
+  Camera,
+  Leaf,
+  BarChart3,
+  User,
+  Bug,
+  Mountain,
+  AlertTriangle,
+  CheckCircle,
+  XCircle,
+  Upload,
+  Info,
+  Book,
+  Bell,
+  Settings,
+  MapPin,
+  Calendar,
+  TrendingUp,
+  ShoppingCart,
+  Star,
+  Navigation,
+  CloudRain,
+  Thermometer,
+  Droplets,
+  ArrowRight,
+  Download,
+  FileText,
+  Image as ImageIcon,
+  Video,
+  Search,
+  Filter,
+  ExternalLink,
+  Sun,
+  Moon,
+} from 'lucide-react';
 import * as tf from '@tensorflow/tfjs';
+import BottomNavigation from './components/BottomNavigation';
 
 const AgroScanApp = () => {
   const [activeTab, setActiveTab] = useState('analyze');
@@ -14,7 +49,8 @@ const AgroScanApp = () => {
   const [currentDocument, setCurrentDocument] = useState(null);
   const [knowledgeSearch, setKnowledgeSearch] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [userLocation, setUserLocation] = useState({ 
+  const [darkMode, setDarkMode] = useState(false);
+  const [userLocation, setUserLocation] = useState({
     latitude: null, 
     longitude: null, 
     city: 'Localisation...', 
@@ -52,6 +88,10 @@ const AgroScanApp = () => {
       processingTime: '2.3s'
     }
   ]);
+
+  useEffect(() => {
+    document.documentElement.classList.toggle('dark', darkMode);
+  }, [darkMode]);
 
   const fileInputRef = useRef(null);
   const cnnModelRef = useRef<tf.GraphModel | null>(null);
@@ -456,7 +496,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
 
   const fetchProductsFromSheet = async () => {
     try {
-      const sheetId = '1yhiNXxU9azc78Z5rvUnJ6EKLEVZMZk5HeWugrqBn6_g';
+      const sheetId = import.meta.env.VITE_GOOGLE_SHEET_ID;
       const url = `https://docs.google.com/spreadsheets/d/${sheetId}/gviz/tq?tqx=out:json`;
       const res = await fetch(url);
       const text = await res.text();
@@ -507,7 +547,7 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
             
             try {
               const response = await fetch(
-                `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=demo&language=fr&limit=1`
+                `https://api.opencagedata.com/geocode/v1/json?q=${latitude}+${longitude}&key=${import.meta.env.VITE_OPENCAGE_API_KEY}&language=fr&limit=1`
               );
               const data = await response.json();
               
@@ -895,7 +935,13 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
   if (currentScreen === 'home') {
     return (
       <div className="min-h-screen bg-gradient-to-br from-green-50 to-amber-50">
-        <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg">
+        <div className="max-w-md mx-auto bg-white min-h-screen shadow-lg relative">
+          <button
+            onClick={() => setDarkMode(!darkMode)}
+            className="absolute top-3 right-3 text-white"
+          >
+            {darkMode ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />}
+          </button>
           <div className="bg-gradient-to-r from-green-600 to-green-700 text-white p-6 text-center">
             <div className="flex items-center justify-center mb-4">
               <Leaf className="w-12 h-12 mr-3" />
@@ -1610,68 +1656,16 @@ La rotation réduit la pression des maladies et améliore la fertilité du sol.
           {/* Profile et autres onglets gardés identiques pour économiser l'espace */}
         </div>
 
-        {/* Bottom Navigation */}
-        <div className="fixed bottom-0 left-1/2 transform -translate-x-1/2 w-full max-w-md bg-white border-t">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab('analyze')}
-              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center ${
-                activeTab === 'analyze' ? 'text-green-600 bg-green-50' : 'text-gray-600'
-              }`}
-            >
-              <Camera className="w-5 h-5 mb-1" />
-              <span className="text-xs">Analyser</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('dashboard')}
-              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center ${
-                activeTab === 'dashboard' ? 'text-green-600 bg-green-50' : 'text-gray-600'
-              }`}
-            >
-              <BarChart3 className="w-5 h-5 mb-1" />
-              <span className="text-xs">Tableau</span>
-            </button>
-
-            <button
-              onClick={() => {
-                setCurrentScreen('order-intrants');
-                setActiveTab('intrants');
-              }}
-              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center relative ${
-                activeTab === 'intrants' || currentScreen === 'order-intrants' ? 'text-green-600 bg-green-50' : 'text-gray-600'
-              }`}
-            >
-              <ShoppingCart className="w-5 h-5 mb-1" />
-              <span className="text-xs">Intrants</span>
-              {cart.length > 0 && (
-                <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-4 h-4 flex items-center justify-center">
-                  {cart.reduce((sum, item) => sum + item.quantity, 0)}
-                </span>
-              )}
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('knowledge')}
-              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center ${
-                activeTab === 'knowledge' ? 'text-green-600 bg-green-50' : 'text-gray-600'
-              }`}
-            >
-              <Book className="w-5 h-5 mb-1" />
-              <span className="text-xs">Connaissances</span>
-            </button>
-            
-            <button
-              onClick={() => setActiveTab('profile')}
-              className={`flex-1 py-3 px-2 flex flex-col items-center justify-center ${
-                activeTab === 'profile' ? 'text-green-600 bg-green-50' : 'text-gray-600'
-              }`}
-            >
-              <User className="w-5 h-5 mb-1" />
-              <span className="text-xs">Profil</span>
-            </button>
-          </div>
-        </div>
+        {/* Bottom Navigation extracted as component */}
+        <BottomNavigation
+          activeTab={activeTab}
+          setActiveTab={setActiveTab}
+          cartCount={cart.reduce((s, i) => s + i.quantity, 0)}
+          openCart={() => {
+            setCurrentScreen('order-intrants');
+            setActiveTab('intrants');
+          }}
+        />
       </div>
     </div>
   );

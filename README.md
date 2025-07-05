@@ -33,6 +33,14 @@ npm install
 npm run dev
 ```
 
+Avant de démarrer l'application, copiez le fichier `.env.example` vers `.env` et
+renseignez vos propres identifiants :
+
+```bash
+cp .env.example .env
+# éditer les valeurs VITE_GOOGLE_SHEET_ID et VITE_OPENCAGE_API_KEY
+```
+
 Le composant principal se trouve dans `src/App.tsx`. Pour générer une version de
 production utilisez `npm run build`.
 
