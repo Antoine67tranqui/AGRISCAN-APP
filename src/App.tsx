@@ -142,7 +142,7 @@ const AgroScanApp = () => {
   const loadCnnModel = async () => {
     if (!cnnModelRef.current) {
       try {
-        cnnModelRef.current = await tf.loadGraphModel('/models/agro-cnn/model.json');
+        cnnModelRef.current = await tf.loadGraphModel(`${import.meta.env.BASE_URL}models/agro-cnn/model.json`);
       } catch (e) {
         console.error('Erreur chargement modèle CNN', e);
       }

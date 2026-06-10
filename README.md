@@ -54,6 +54,26 @@ L'application récupérera toutes les feuilles du classeur et mettra à jour le 
 Le composant principal se trouve dans `src/App.tsx`. Pour générer une version de
 production utilisez `npm run build`.
 
+## Déploiement
+
+L'application est déployée automatiquement sur **GitHub Pages** via le workflow
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) à chaque push sur
+la branche `main` (ou manuellement depuis l'onglet *Actions*).
+
+URL de production : <https://antoine67tranqui.github.io/AGRISCAN-APP/>
+
+### Configuration requise (une seule fois)
+
+1. Dans les paramètres du dépôt GitHub, ouvrez **Settings → Pages** et
+   sélectionnez **GitHub Actions** comme source.
+2. Dans **Settings → Secrets and variables → Actions**, ajoutez les secrets :
+   - `VITE_GOOGLE_SHEET_ID`
+   - `VITE_OPENCAGE_API_KEY`
+
+> ⚠️ Les variables `VITE_*` sont intégrées au bundle JavaScript et donc
+> visibles publiquement. N'utilisez que des clés prévues pour un usage côté
+> client (clé OpenCage restreinte, Google Sheet publié en lecture seule).
+
 Des tests automatisés ne sont pas fournis. Vous pouvez ajouter votre propre
 configuration Jest ou Vitest pour garantir la non-régression lors de futurs
 refactorings.
