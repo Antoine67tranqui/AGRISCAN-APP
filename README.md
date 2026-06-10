@@ -57,18 +57,20 @@ production utilisez `npm run build`.
 ## Déploiement
 
 L'application est déployée automatiquement sur **GitHub Pages** via le workflow
-[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) à chaque push sur
-la branche `main` (ou manuellement depuis l'onglet *Actions*).
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) : à chaque push
+sur `main` (ou manuellement depuis l'onglet *Actions*), le build est publié sur
+la branche `gh-pages`, servie par GitHub Pages.
 
 URL de production : <https://antoine67tranqui.github.io/AGRISCAN-APP/>
 
-### Configuration requise (une seule fois)
+### Secrets optionnels
 
-1. Dans les paramètres du dépôt GitHub, ouvrez **Settings → Pages** et
-   sélectionnez **GitHub Actions** comme source.
-2. Dans **Settings → Secrets and variables → Actions**, ajoutez les secrets :
-   - `VITE_GOOGLE_SHEET_ID`
-   - `VITE_OPENCAGE_API_KEY`
+Dans **Settings → Secrets and variables → Actions**, vous pouvez définir :
+
+- `VITE_GOOGLE_SHEET_ID` — identifiant du classeur Google Sheets du catalogue
+  d'intrants (par défaut, le classeur public documenté ci-dessus est utilisé) ;
+- `VITE_OPENCAGE_API_KEY` — clé OpenCage pour le géocodage inverse de la
+  localisation (sans elle, la détection automatique de la ville est désactivée).
 
 > ⚠️ Les variables `VITE_*` sont intégrées au bundle JavaScript et donc
 > visibles publiquement. N'utilisez que des clés prévues pour un usage côté
