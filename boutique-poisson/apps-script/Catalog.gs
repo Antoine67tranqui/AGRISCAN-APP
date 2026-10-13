@@ -301,5 +301,5 @@ var CATALOGUE = [
   ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg'],
   ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg'],
   ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg'],
-  ['Viandes et volailles congelées', 'Pointe', 'kg']
+  ['Viandes et volailles congelées', 'Pointe (bout d\'aile de poulet normal)', 'kg']
 ];
