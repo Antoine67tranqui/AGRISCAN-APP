@@ -466,47 +466,96 @@ function productOptions(selected, q) {
   }).join('');
 }
 function vBuy(w) {
-  w.innerHTML = head('Achats / Approvisionnement', 'Enregistrez chaque achat : le coût moyen et le stock se mettent à jour') +
+  var mode = 'sacs', basis = 'kg';   // mode : sacs | poids ; basis : kg | sac | total (sacs) ou unit | total (poids)
+  w.innerHTML = head('Achats / Approvisionnement', 'Enregistrez chaque achat : le stock et le coût moyen se mettent à jour') +
     '<div class="grid two"><div class="card"><h2>Nouvel achat</h2>' +
-    '<label class="f"><span>Produit</span><input id="bq" placeholder="Filtrer la liste…" style="margin-bottom:6px">' + '<select id="bp">' + productOptions('') + '</select>' + '</label>' +
-    '<div class="row"><label class="f"><span>Date</span>' + dateInput('bd', today()) + '</label><label class="f"><span>Quantité</span><input id="bqty" type="number" inputmode="decimal" step="any" min="0"></label></div>' +
-    '<div class="chips"><button class="chip on" id="m1">Prix unitaire</button><button class="chip" id="m2">Montant total payé</button></div>' +
-    '<div class="row"><label class="f"><span id="plab">Prix d\'achat unitaire (FCFA)</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>' +
-    '<label class="f"><span>Nouveau prix de vente (facultatif)</span><input id="bsell" type="number" inputmode="decimal" step="any" min="0"></label></div>' +
+    '<label class="f"><span>Produit</span><input id="bq" placeholder="Filtrer la liste…" style="margin-bottom:6px"><select id="bp">' + productOptions('') + '</select></label>' +
+    '<label class="f"><span>Date</span>' + dateInput('bd', today()) + '</label>' +
+    '<div class="chips"><button class="chip on" id="mm1">Par sacs / cartons</button><button class="chip" id="mm2">Au poids / à l\'unité</button></div>' +
+    '<div id="bform"></div>' +
+    '<label class="f"><span>Nouveau prix de vente (facultatif)</span><input id="bsell" type="number" inputmode="decimal" step="any" min="0"></label>' +
     '<label class="f"><span>Fournisseur</span><input id="bsup" list="sups" placeholder="Nom du fournisseur"><datalist id="sups"></datalist></label>' +
-    '<div class="sub2"><span>Montant de l\'achat</span><b id="btot">0 FCFA</b></div>' +
-    '<div class="sub2" id="bmargin"></div>' +
-    '<button class="btn big" id="bsave" style="margin-top:12px">Enregistrer l\'achat</button></div>' +
+    '<div class="card" style="background:var(--brand-soft);box-shadow:none;margin:6px 0 10px" id="bsum"></div>' +
+    '<button class="btn big" id="bsave">Enregistrer l\'achat</button></div>' +
     '<div class="card"><h2>Derniers achats</h2><div class="hint">30 derniers jours</div><div id="blist" class="scroll"><div class="skel"></div></div></div></div>';
-  var mode = 'unit';
-  function calc() {
-    var q = parseFloat($('#bqty').value) || 0, v = parseFloat($('#bpu').value) || 0, unit = mode === 'unit' ? v : (q ? v / q : 0), tot = q * unit;
-    $('#btot').textContent = money(tot) + (mode === 'total' && q ? ' (' + money(unit) + ' / unité)' : '');
-    var p = prodById($('#bp').value), sell = parseFloat($('#bsell').value) || (p ? p.prixVente : 0);
-    $('#bmargin').innerHTML = p && unit && sell ? '<span>Marge théorique par unité</span><b style="color:' + (sell - unit >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(sell - unit) + ' (' + Math.round((sell - unit) / sell * 100) + ' %)</b>' : '';
-    return unit;
+  var kgPref = '';
+  function formHtml() {
+    if (mode === 'sacs') {
+      return '<div class="row"><label class="f"><span>Nombre de sacs / cartons</span><input id="bn" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 10"></label>' +
+        '<label class="f"><span>Poids d\'un sac (kg)</span><input id="bk" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 25" value="' + kgPref + '"></label></div>' +
+        '<div class="chips"><button class="chip' + (basis === 'kg' ? ' on' : '') + '" data-b="kg">Prix au kilo</button><button class="chip' + (basis === 'sac' ? ' on' : '') + '" data-b="sac">Prix du sac</button><button class="chip' + (basis === 'total' ? ' on' : '') + '" data-b="total">Total payé</button></div>' +
+        '<label class="f"><span>' + ({ kg: 'Prix d\'achat au kilo (FCFA)', sac: 'Prix d\'un sac (FCFA)', total: 'Montant total payé (FCFA)' }[basis]) + '</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>';
+    }
+    return '<label class="f"><span>Quantité achetée</span><input id="bqty" type="number" inputmode="decimal" step="any" min="0"></label>' +
+      '<div class="chips"><button class="chip' + (basis === 'unit' ? ' on' : '') + '" data-b="unit">Prix unitaire</button><button class="chip' + (basis === 'total' ? ' on' : '') + '" data-b="total">Total payé</button></div>' +
+      '<label class="f"><span>' + (basis === 'unit' ? 'Prix d\'achat unitaire (FCFA)' : 'Montant total payé (FCFA)') + '</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>';
   }
-  $('#m1').onclick = function () { mode = 'unit'; $('#m1').classList.add('on'); $('#m2').classList.remove('on'); $('#plab').textContent = 'Prix d\'achat unitaire (FCFA)'; calc(); };
-  $('#m2').onclick = function () { mode = 'total'; $('#m2').classList.add('on'); $('#m1').classList.remove('on'); $('#plab').textContent = 'Montant total payé (FCFA)'; calc(); };
-  ['bqty', 'bpu', 'bsell'].forEach(function (i) { $('#' + i).oninput = calc; });
-  $('#bp').onchange = function () { var p = prodById(this.value); if (p) { if (p.prixAchat && mode === 'unit' && !$('#bpu').value) $('#bpu').value = p.prixAchat; } calc(); };
+  function bindForm() {
+    $('#bform').innerHTML = formHtml();
+    $$('#bform [data-b]').forEach(function (b) { b.onclick = function () { var keep = readRaw(); basis = b.dataset.b; bindForm(); restore(keep); calc(); }; });
+    $$('#bform input').forEach(function (i) { i.oninput = calc; });
+    calc();
+  }
+  function readRaw() { var o = {}; $$('#bform input').forEach(function (i) { o[i.id] = i.value; }); return o; }
+  function restore(o) { Object.keys(o).forEach(function (k) { var e = $('#' + k); if (e && k !== 'bpu') e.value = o[k]; }); }
+  function val(id) { var e = $('#' + id); return e ? (parseFloat(String(e.value).replace(',', '.')) || 0) : 0; }
+  function parts() {
+    var p = prodById($('#bp').value), v = val('bpu'), out = { p: p, qte: 0, pu: 0, montant: 0, nb: 0, kg: 0 };
+    if (mode === 'sacs') {
+      out.nb = val('bn'); out.kg = val('bk'); out.qte = out.nb * out.kg;
+      if (basis === 'kg') out.pu = v; else if (basis === 'sac') out.pu = out.kg ? v / out.kg : 0; else out.pu = out.qte ? v / out.qte : 0;
+    } else {
+      out.qte = val('bqty'); out.pu = basis === 'unit' ? v : (out.qte ? v / out.qte : 0);
+    }
+    out.montant = out.qte * out.pu; out.raw = v;
+    return out;
+  }
+  function calc() {
+    var x = parts(), u = x.p ? x.p.unite : 'unité', sell = val('bsell') || (x.p ? x.p.prixVente : 0), h = '';
+    if (mode === 'sacs') h += '<div class="sub2"><span>Poids total acheté</span><b>' + qty(x.qte) + ' kg' + (x.nb ? ' (' + qty(x.nb) + ' × ' + qty(x.kg) + ' kg)' : '') + '</b></div>';
+    else h += '<div class="sub2"><span>Quantité achetée</span><b>' + qty(x.qte) + ' ' + esc(u) + '</b></div>';
+    h += '<div class="sub2"><span>Prix d\'achat ' + (mode === 'sacs' ? 'au kilo' : 'unitaire') + '</span><b>' + money(x.pu) + '</b></div>';
+    if (mode === 'sacs' && x.kg && x.pu) h += '<div class="sub2"><span>Prix d\'un sac</span><b>' + money(x.pu * x.kg) + '</b></div>';
+    h += '<div class="tot" style="font-size:18px"><span>Montant de l\'achat</span><span>' + money(x.montant) + '</span></div>';
+    if (x.pu && sell) h += '<div class="sub2" style="margin-top:6px"><span>Marge théorique par ' + (mode === 'sacs' ? 'kilo' : 'unité') + '</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(sell - x.pu) + ' (' + Math.round((sell - x.pu) / sell * 100) + ' %)</b></div>';
+    $('#bsum').innerHTML = h;
+    return x;
+  }
+  function setMode(m) {
+    mode = m; basis = m === 'sacs' ? 'kg' : 'unit';
+    $('#mm1').classList.toggle('on', m === 'sacs'); $('#mm2').classList.toggle('on', m === 'poids');
+    bindForm();
+  }
+  $('#mm1').onclick = function () { setMode('sacs'); }; $('#mm2').onclick = function () { setMode('poids'); };
+  $('#bsell').oninput = calc;
+  $('#bp').onchange = function () {
+    var p = prodById(this.value); if (!p) return;
+    kgPref = p.kgSac || '';
+    if (p.kgSac > 0 && mode !== 'sacs') { setMode('sacs'); }
+    else if (mode === 'sacs') { var k = $('#bk'); if (k && !k.value && kgPref) k.value = kgPref; }
+    var pu = $('#bpu'); if (pu && !pu.value && p.prixAchat && ((mode === 'sacs' && basis === 'kg') || (mode === 'poids' && basis === 'unit'))) pu.value = p.prixAchat;
+    calc();
+  };
   $('#bq').oninput = function () { var sel = $('#bp'); sel.innerHTML = productOptions(sel.value, this.value); };
   $('#bsave').onclick = function () {
-    var q = parseFloat($('#bqty').value) || 0, unit = calc();
-    if (!$('#bp').value) return toast('Choisissez un produit.', true);
-    if (q <= 0) return toast('Indiquez la quantité achetée.', true);
-    if (!(unit > 0)) return toast("Indiquez le prix d'achat.", true);
-    busy($('#bsave'), function () {
-      return api('addPurchase', { date: $('#bd').value, produitId: $('#bp').value, qte: q, pu: Math.round(unit * 100) / 100, prixVente: $('#bsell').value, fournisseur: $('#bsup').value }).then(function () {
-        toast('✅ Achat enregistré'); return refresh();
-      });
-    });
+    var x = calc();
+    if (!x.p) return toast('Choisissez un produit.', true);
+    if (mode === 'sacs') {
+      if (!(x.nb > 0)) return toast('Indiquez le nombre de sacs ou cartons.', true);
+      if (!(x.kg > 0)) return toast('Indiquez le poids (kg) d\'un sac.', true);
+    } else if (!(x.qte > 0)) return toast('Indiquez la quantité achetée.', true);
+    if (!(x.pu > 0)) return toast('Indiquez le prix d\'achat.', true);
+    var a = { date: $('#bd').value, produitId: x.p.id, prixVente: $('#bsell').value, fournisseur: $('#bsup').value };
+    if (mode === 'sacs') { a.nbSacs = x.nb; a.kgSac = x.kg; if (basis === 'kg') a.pu = x.raw; else if (basis === 'sac') a.prixSac = x.raw; else a.montant = x.raw; }
+    else { a.qte = x.qte; if (basis === 'unit') a.pu = x.raw; else a.montant = x.raw; }
+    busy($('#bsave'), function () { return api('addPurchase', a).then(function () { toast('✅ Achat enregistré : ' + (mode === 'sacs' ? qty(x.nb) + ' sac(s) = ' + qty(x.qte) + ' kg' : qty(x.qte) + ' ' + x.p.unite)); return refresh(); }); });
   };
+  bindForm();
   api('history', { table: 'Achats', from: addDays(today(), -29), to: today() }).then(function (rows) {
     var sups = {}; rows.forEach(function (r) { if (r.fournisseur) sups[r.fournisseur] = 1; });
     $('#sups').innerHTML = Object.keys(sups).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
     $('#blist').innerHTML = rows.length ? '<table><thead><tr><th>Date</th><th>Produit</th><th class="n">Qté</th><th class="n">PU</th><th class="n">Total</th></tr></thead><tbody>' +
-      rows.slice(0, 25).map(function (r) { return '<tr><td>' + frShort(r.date) + '</td><td>' + esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : '') + '</td><td class="n">' + qty(r.qte) + '</td><td class="n">' + nf.format(r.pu) + '</td><td class="n"><b>' + nf.format(r.qte * r.pu) + '</b></td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty">Aucun achat sur 30 jours.</div>';
+      rows.slice(0, 25).map(function (r) { return '<tr><td>' + frShort(r.date) + '</td><td>' + esc(r.produit) + '<div style="font-size:12px;color:var(--muted)">' + (r.nbSacs ? qty(r.nbSacs) + ' sac(s) × ' + qty(r.kgSac) + ' kg' : '') + (r.fournisseur ? (r.nbSacs ? ' · ' : '') + esc(r.fournisseur) : '') + '</div></td><td class="n">' + qty(r.qte) + '</td><td class="n">' + nf1.format(r.pu) + '</td><td class="n"><b>' + nf.format(r.qte * r.pu) + '</b></td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty">Aucun achat sur 30 jours.</div>';
   }).catch(function (e) { $('#blist').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
 }
 
@@ -532,7 +581,7 @@ function vStock(w) {
     });
     $('#stbl').innerHTML = rows.length ? '<table><thead><tr><th>Produit</th><th class="n">Entrées</th><th class="n">Ventes</th><th class="n">Pertes</th><th class="n">Stock</th><th class="n">Coût moyen</th><th class="n">Valeur</th><th>État</th><th></th></tr></thead><tbody>' +
       rows.slice(0, 300).map(function (s) {
-        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n">' + qty(s.entrees) + '</td><td class="n">' + qty(s.sorties) + '</td><td class="n">' + qty(s.pertes) + '</td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(s.unite) + '</td><td class="n">' + nf.format(s.coutMoyen) + '</td><td class="n">' + nf.format(s.valeur) + '</td><td><span class="badge ' + s.statut + '">' + { ok: 'OK', bas: 'Stock bas', rupture: 'Rupture', neutre: 'Aucun mouvement' }[s.statut] + '</span></td><td><button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
+        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n">' + qty(s.entrees) + '</td><td class="n">' + qty(s.sorties) + '</td><td class="n">' + qty(s.pertes) + '</td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(s.unite) + (s.sacs != null && s.stock > 0 ? '<div style="font-size:12px;color:var(--muted)">≈ ' + qty(s.sacs) + ' sac(s) de ' + qty(s.kgSac) + ' kg</div>' : '') + '</td><td class="n">' + nf.format(s.coutMoyen) + '</td><td class="n">' + nf.format(s.valeur) + '</td><td><span class="badge ' + s.statut + '">' + { ok: 'OK', bas: 'Stock bas', rupture: 'Rupture', neutre: '—' }[s.statut] + '</span></td><td><button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">Aucun produit.</div>';
     $$('[data-loss]', w).forEach(function (b) { b.onclick = function () { lossModal(b.dataset.loss); }; });
   }
@@ -580,13 +629,15 @@ function productModal(id) {
     '<label class="f"><span>Unité de vente</span><input id="pu" list="ul" value="' + esc(p.unite) + '"><datalist id="ul">' + ['kg', 'pièce', 'carton', 'sac', 'paquet', 'boîte', 'sachet', 'bouteille', 'litre', 'bidon', 'tas', 'barre'].map(function (u) { return '<option value="' + u + '">'; }).join('') + '</datalist></label></div>' +
     '<div class="row"><label class="f"><span>Prix d\'achat de référence (FCFA)</span><input id="pa" type="number" inputmode="decimal" step="any" min="0" value="' + (p.prixAchat || '') + '"></label>' +
     '<label class="f"><span>Prix de vente (FCFA)</span><input id="pv" type="number" inputmode="decimal" step="any" min="0" value="' + (p.prixVente || '') + '"></label></div>' +
-    '<div class="row"><label class="f"><span>Seuil d\'alerte stock</span><input id="ps" type="number" inputmode="decimal" step="any" min="0" value="' + (p.seuil || '') + '"></label>' +
+    '<div class="row"><label class="f"><span>Poids habituel d\'un sac / carton (kg)</span><input id="pk" type="number" inputmode="decimal" step="any" min="0" value="' + (p.kgSac || '') + '" placeholder="ex : 25"></label>' +
+    '<label class="f"><span>Seuil d\'alerte stock</span><input id="ps" type="number" inputmode="decimal" step="any" min="0" value="' + (p.seuil || '') + '"></label></div>' +
+    '<div class="row">' +
     '<label class="f"><span>Statut</span><select id="pa2"><option value="1"' + (p.actif ? ' selected' : '') + '>Actif</option><option value="0"' + (!p.actif ? ' selected' : '') + '>Désactivé (masqué à la vente)</option></select></label></div>' +
     '<div class="row"><button class="btn ghost" id="pc1">Annuler</button><button class="btn" id="pc2">Enregistrer</button></div>');
   $('#pc1').onclick = closeModal;
   $('#pc2').onclick = function () {
     busy($('#pc2'), function () {
-      return api('saveProduct', { id: id, nom: $('#pn').value, categorie: $('#pcat').value, unite: $('#pu').value, prixAchat: $('#pa').value, prixVente: $('#pv').value, seuil: $('#ps').value, actif: $('#pa2').value === '1' }).then(function () {
+      return api('saveProduct', { id: id, nom: $('#pn').value, categorie: $('#pcat').value, unite: $('#pu').value, prixAchat: $('#pa').value, prixVente: $('#pv').value, seuil: $('#ps').value, kgSac: $('#pk').value, actif: $('#pa2').value === '1' }).then(function () {
         closeModal(); toast('✅ Produit enregistré'); return refresh();
       });
     });
@@ -677,7 +728,7 @@ function vHistory(w) {
   var hc = $('#hc'); if (hc) hc.onchange = function () { H.credit = this.value === '1'; vHistory(w); };
   var cols = {
     Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
-    Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1]],
+    Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Sacs', function (r) { return r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) + ' kg' : '—'; }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1]],
     Depenses: [['Date', function (r) { return frShort(r.date); }], ['Catégorie', function (r) { return esc(r.categorie); }], ['Libellé', function (r) { return esc(r.libelle); }], ['Montant', function (r) { return '<b>' + nf.format(r.montant) + '</b>'; }, 1]],
     Pertes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['Motif', function (r) { return esc(r.motif); }], ['Valeur', function (r) { return '<b>' + nf.format(r.qte * r.cout) + '</b>'; }, 1]]
   }[H.table];

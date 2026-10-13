@@ -35,11 +35,14 @@ Ouvrez le lien dans Chrome (Android) ou Safari (iPhone), connectez-vous avec le 
 Avec [clasp](https://github.com/google/clasp) : `npm i -g @google/clasp`, `clasp login`, puis dans `boutique-poisson/apps-script/` créez un fichier `.clasp.json` contenant `{"scriptId":"<ID du script>","rootDir":"."}` et lancez `clasp push`.
 
 ## Mise à jour de l'application
-Après toute modification du code : **Déployer > Gérer les déploiements > Modifier (crayon) > Version : Nouvelle version > Déployer**. L'URL ne change pas.
+Après toute modification du code (recopier les fichiers modifiés dans l'éditeur, en particulier `Core.gs`, `Code.gs`, `Catalog.gs` et `Index.html`) : **Déployer > Gérer les déploiements > Modifier (crayon) > Version : Nouvelle version > Déployer**. L'URL ne change pas.
 
 ## Utilisation au quotidien
 1. **Produits** : renseignez une fois le prix d'achat de référence et le prix de vente de vos articles (aucun prix n'est prérempli, car ils dépendent de vos fournisseurs et de votre marché).
-2. **Achats** : à chaque approvisionnement, saisissez produit, quantité, prix d'achat (unitaire ou total payé) et fournisseur. Le stock et le coût moyen se mettent à jour.
+2. **Achats** : à chaque approvisionnement, choisissez le produit puis l'un des deux modes de saisie.
+   - **Par sacs / cartons** (pour les produits au kilo : tilapia, sylvi petit / moyen / gros, cuisse normale, cuisse rapide, aile de poulet, pointe, saumon, hareng, etc.) : indiquez le **nombre de sacs** et le **poids d'un sac en kg**, puis le prix soit **au kilo**, soit **du sac**, soit le **total payé**. L'application calcule le poids total (ex : 10 sacs × 25 kg = 250 kg), le prix au kilo et le montant. Le stock est tenu en kg. Le poids du sac et le prix au kilo sont mémorisés sur la fiche produit et préremplis à l'achat suivant (le poids reste modifiable si le sac change).
+   - **Au poids / à l'unité** : quantité et prix unitaire ou total payé.
+   Le stock et le coût moyen se mettent à jour. La feuille `Achats` conserve le nombre de sacs et les kg par sac.
 3. **Vendre** : touchez les produits vendus, ajustez quantité et prix si besoin, choisissez le paiement (espèces, Mobile Money, crédit), puis enregistrez.
 4. **Accueil / Rapports** : chiffre d'affaires, bénéfice brut et bénéfice net du jour, de la semaine, du mois ou d'une période choisie.
 5. **Dépenses** et **Stock > Perte** : électricité, glace, transport, poisson avarié, etc. Ils réduisent le bénéfice net.
@@ -49,7 +52,7 @@ Après toute modification du code : **Déployer > Gérer les déploiements > Mod
 - **Coût unitaire** = moyenne pondérée des achats du produit enregistrés jusqu'à la date de la vente (somme des montants / somme des quantités). Sans achat enregistré, le prix d'achat de référence de la fiche produit est utilisé. Ce coût est figé dans la ligne de vente.
 - **Bénéfice brut** = chiffre d'affaires − coût des produits vendus.
 - **Bénéfice net** = bénéfice brut − dépenses − valeur des pertes.
-- **Stock** = achats − ventes − pertes.
+- **Stock** = achats − ventes − pertes (en kg pour les produits au kilo). L'équivalent en sacs affiché dans Stock est une estimation basée sur le dernier poids de sac utilisé.
 
 Limites à connaître : le coût moyen est une moyenne sur tous les achats (pas un suivi par lot de type « premier entré, premier sorti »). Si vous vendez un produit sans avoir enregistré son achat, le stock devient négatif et l'application vous prévient. Les crédits clients sont suivis (liste des crédits non réglés dans Historique) mais il n'y a pas de gestion de comptes clients.
 

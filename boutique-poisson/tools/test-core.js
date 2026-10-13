@@ -11,7 +11,7 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; };
 const eq = (a, b, m) => { assert.strictEqual(a, b, m + ` (obtenu ${a}, attendu ${b})`); pass++; };
 
 // Catalogue
-eq(T('store.all("Produits").length'), 256, 'catalogue amorcé');
+eq(T('store.all("Produits").length'), 261, 'catalogue amorcé');
 const til = T('id("Tilapia frais (Oreochromis")');
 T(`saveProduct_(store, {id:"${til}", nom:"Tilapia frais (Oreochromis niloticus)", categorie:"Poissons frais et élevage", unite:"kg", prixAchat:1000, prixVente:1500, seuil:20, actif:true})`);
 // Achats : 100 @1000 puis 100 @1200 => coût moyen 1100
@@ -65,7 +65,31 @@ const dash = T('dashboard_(store,"2026-10-08")');
 eq(dash.jour.totaux.ca, 8000, 'dashboard CA du jour'); ok(dash.valeurStock > 0, 'valeur stock');
 // Nouveau produit
 const np = T('saveProduct_(store,{nom:"Poisson test",categorie:"Test",unite:"kg",prixAchat:1,prixVente:2})');
-eq(np.id, 'P0257', 'ID auto-incrémenté');
+eq(np.id, 'P0262', 'ID auto-incrémenté');
 console.log(`OK : ${pass} vérifications réussies (Core.gs)`);
 const neutre = T('stockTable_(store)').filter(s => s.id !== til && s.entrees === 0 && s.sorties === 0 && s.pertes === 0)[0];
 assert.strictEqual(neutre.statut, 'neutre'); console.log('OK : produit sans mouvement = neutre');
+
+// Achat par sacs : 10 sacs de 25 kg à 1 100 FCFA/kg => 250 kg, 275 000 FCFA
+const sy = T('id("Poisson sylvi moyen")');
+let a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:10,kgSac:25,pu:1100})`);
+eq(a.qte, 250, 'kg = sacs x kg/sac'); eq(a.total, 275000, 'total achat par kg'); eq(a.nbSacs, 10, 'nb sacs conservé'); eq(a.kgSac, 25, 'kg/sac conservé');
+let prod = T(`listProducts_(store).filter(function(p){return p.id==="${sy}"})[0]`);
+eq(prod.kgSac, 25, 'poids du sac mémorisé sur la fiche'); eq(prod.prixAchat, 1100, 'prix au kg mémorisé');
+let sst = T(`stockTable_(store).filter(function(p){return p.id==="${sy}"})[0]`);
+eq(sst.stock, 250, 'stock en kg'); eq(sst.sacs, 10, 'équivalent sacs');
+// Prix du sac : 5 sacs de 20 kg à 30 000 FCFA le sac => 1 500 FCFA/kg
+a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:5,kgSac:20,prixSac:30000})`);
+eq(a.pu, 1500, 'prix au kg déduit du prix du sac'); eq(a.qte, 100, 'qte 5x20'); eq(a.total, 150000, 'total prix du sac');
+// Montant total payé : 3 sacs de 25 kg pour 83 000 FCFA
+a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:3,kgSac:25,montant:83000})`);
+eq(a.qte, 75, 'qte 3x25'); eq(Math.round(a.pu * a.qte), 83000, 'total payé conservé');
+// Coût moyen pondéré : (275000+150000+83000)/(250+100+75)
+sst = T(`stockTable_(store).filter(function(p){return p.id==="${sy}"})[0]`);
+eq(sst.coutMoyen, Math.round((508000/425)*100)/100, 'coût moyen pondéré');
+assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:2,pu:1000})`), /poids/); pass++;
+assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:2,kgSac:25})`), /prix/); pass++;
+// Saisie au poids inchangée
+a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",qte:12.5,pu:1000})`);
+eq(a.qte, 12.5, 'saisie au poids'); eq(a.nbSacs, '', 'pas de sacs');
+console.log('OK : achats par sacs / cartons');

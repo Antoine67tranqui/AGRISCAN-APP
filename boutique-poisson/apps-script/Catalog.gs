@@ -99,7 +99,7 @@ var CATALOGUE = [
   // Viandes et volailles congelées
   ['Viandes et volailles congelées', 'Poulet entier congelé', 'pièce'],
   ['Viandes et volailles congelées', 'Poulet congelé (carton)', 'carton'],
-  ['Viandes et volailles congelées', 'Cuisses de poulet', 'kg'],
+  ['Viandes et volailles congelées', 'Cuisse de poulet normal', 'kg'],
   ['Viandes et volailles congelées', 'Ailes de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Dos de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Gésiers de poulet', 'kg'],
@@ -295,5 +295,11 @@ var CATALOGUE = [
   ['Emballages et consommables', 'Film alimentaire', 'rouleau'],
   ['Emballages et consommables', 'Barquettes', 'paquet'],
   ['Emballages et consommables', 'Cure-dents', 'boîte'],
-  ['Emballages et consommables', 'Charbon de bois', 'sac']
+  ['Emballages et consommables', 'Charbon de bois', 'sac'],
+  // Ajouts (produits au kilo achetés en sacs ou cartons)
+  ['Poissons congelés', 'Poisson sylvi petit calibre', 'kg'],
+  ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg'],
+  ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg'],
+  ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg'],
+  ['Viandes et volailles congelées', 'Pointe', 'kg']
 ];

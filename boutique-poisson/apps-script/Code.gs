@@ -68,8 +68,22 @@ SheetStore_.prototype.sheet_ = function (table) {
   var sh = this.ss.getSheetByName(table);
   if (!sh) { setup(); sh = this.ss.getSheetByName(table); }
   if (!sh) throw new Error('Feuille introuvable : ' + table);
+  if (!this.checked) this.checked = {};
+  if (!this.checked[table]) { this.checked[table] = true; ensureColumns_(sh, SCHEMA[table]); }
   return sh;
 };
+
+/** Mise à niveau : ajoute les colonnes (et en-têtes) introduites par les nouvelles versions. */
+function ensureColumns_(sh, cols) {
+  var need = cols.length;
+  if (sh.getMaxColumns() < need) sh.insertColumnsAfter(sh.getMaxColumns(), need - sh.getMaxColumns());
+  var hdr = sh.getRange(1, 1, 1, need).getValues()[0];
+  cols.forEach(function (c, i) {
+    if (hdr[i] === '' || hdr[i] == null) {
+      sh.getRange(1, i + 1).setValue(c.label).setBackground(HEAD_BG).setFontColor(HEAD_FG).setFontWeight('bold').setWrap(true);
+    }
+  });
+}
 SheetStore_.prototype.all = function (table) {
   if (this.cache[table]) return this.cache[table].map(function (o) { return Object.assign({}, o); });
   var sh = this.sheet_(table), cols = SCHEMA[table], tz = this.tz, rows = [];

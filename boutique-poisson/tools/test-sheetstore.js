@@ -5,6 +5,7 @@ function FakeSheet(name) {
   const self = this;
   this.getLastRow = () => { let n = self.rows.length; while (n > 0 && self.rows[n-1].every(v => v === '' || v == null)) n--; return n; };
   this.getMaxRows = () => 1000;
+  this.getMaxColumns = () => 40; this.insertColumnsAfter = () => {};
   this.setFrozenRows = () => {};
   this.getRange = (r, c, nr = 1, nc = 1) => {
     if (typeof r === 'string') { const rg = self.getRange(1, 1); rg.getNote = () => ''; rg.setNote = () => rg; return rg; }
@@ -36,12 +37,14 @@ const ctx = require('./load-gas')({
 const vm = require('vm'), run = c => vm.runInContext(c, ctx);
 run('var created = setup();');
 assert.strictEqual(run('JSON.stringify(created.sort())'), JSON.stringify(['Achats','Depenses','Journalier','Mensuel','Pertes','Produits','Stock','Ventes']), 'feuilles créées');
-assert.strictEqual(sheets.Produits.getLastRow(), 257, 'produits amorcés (1 en-tête + 256)');
+assert.strictEqual(sheets.Produits.getLastRow(), 262, 'produits amorcés (1 en-tête + 261)');
 assert.strictEqual(sheets.Ventes.rows[0][9], 'Bénéfice brut (FCFA)', 'en-tête Ventes');
 // Parcours complet via api()
 const til = run('api("bootstrap").produits[0].id');
 run(`api("saveProduct",{id:"${til}",nom:"Tilapia frais (Oreochromis niloticus)",categorie:"Poissons frais et élevage",unite:"kg",prixAchat:1000,prixVente:1500,seuil:10,actif:true})`);
-run(`api("addPurchase",{date:"2026-10-01",produitId:"${til}",qte:50,pu:1000,fournisseur:"Ferme X"})`);
+run(`api("addPurchase",{date:"2026-10-01",produitId:"${til}",nbSacs:2,kgSac:25,pu:1000,fournisseur:"Ferme X"})`);
+assert.strictEqual(sheets.Achats.rows[1][4], 50, 'qte = 2 sacs x 25 kg'); assert.strictEqual(sheets.Achats.rows[1][9], 2); assert.strictEqual(sheets.Achats.rows[1][10], 25);
+assert.strictEqual(sheets.Produits.rows[1][8], 25, 'kg/sac mémorisé dans la feuille Produits');
 const sale = run(`api("addSale",{date:"2026-10-02",paiement:"Espèces",lines:[{produitId:"${til}",qte:12.5,pu:1500}]})`);
 assert.strictEqual(sale.total, 18750); assert.strictEqual(sale.marge, 6250);
 // La ligne écrite contient bien les formules aux bonnes colonnes (F=qte, G=pu, I=cout)
