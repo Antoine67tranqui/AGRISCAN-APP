@@ -101,6 +101,11 @@ tr:hover td{background:color-mix(in srgb,var(--brand-soft) 45%,transparent)}
 .line{display:grid;grid-template-columns:1fr 70px 92px 28px;gap:6px;align-items:center;padding:8px 0;border-bottom:1px dashed var(--line)}
 .line .nm{font-weight:600;font-size:14px}
 .line input{padding:7px 8px;text-align:right}
+.line .sacrow{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.chip.sm{padding:3px 10px;font-size:12.5px}
+.sacrow label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-weight:600;margin:0}
+.sacrow label input{width:76px;padding:5px 7px}
+.sacrow .eq{font-size:12.5px;font-weight:700;color:var(--brand)}
 .line .x{border:0;background:transparent;color:var(--bad);font-size:20px;cursor:pointer}
 .tot{display:flex;justify-content:space-between;font-size:20px;font-weight:800;margin-top:12px}
 .sub2{display:flex;justify-content:space-between;color:var(--muted);font-size:14px}
@@ -507,7 +512,8 @@ var SCHEMA = {
     { key: 'ca', label: "Chiffre d'affaires (FCFA)", formula: '=[qte]*[pu]' },
     { key: 'cout', label: "Coût d'achat unitaire (FCFA)" },
     { key: 'marge', label: 'Bénéfice brut (FCFA)', formula: '=[qte]*([pu]-[cout])' },
-    { key: 'paiement', label: 'Paiement' }, { key: 'note', label: 'Client / Note' }
+    { key: 'paiement', label: 'Paiement' }, { key: 'note', label: 'Client / Note' },
+    { key: 'nbSacs', label: 'Nombre de sacs / cartons vendus' }, { key: 'kgSac', label: 'Kg par sac / carton' }
   ],
   Depenses: [
     { key: 'id', label: 'ID' }, { key: 'date', label: 'Date', text: true },
@@ -621,6 +627,12 @@ function stockTable_(store) {
 
 /* ---------- Écritures ---------- */
 
+/**
+ * Vente. Chaque ligne est soit au poids / à l'unité {produitId, qte, pu},
+ * soit au sac {produitId, nbSacs, kgSac, prixSac} : la quantité enregistrée est
+ * alors nbSacs x kgSac (dans l'unité du produit) et le prix unitaire prixSac / kgSac.
+ * Le poids du sac saisi est mémorisé sur la fiche produit.
+ */
 function addSale_(store, d) {
   var date = validDate_(d.date), lines = d.lines || [];
   if (!lines.length) throw new Error('Le panier est vide.');
@@ -628,11 +640,18 @@ function addSale_(store, d) {
   return store.lock(function () {
     var products = listProducts_(store), achats = store.all('Achats'), stock = {}, warnings = [], total = 0, margin = 0;
     stockTable_(store).forEach(function (s) { stock[s.id] = s.stock; });
-    var batch = uid_('V');
+    var batch = uid_('V'), kgUpdates = {};
     lines.forEach(function (l, i) {
       var p = products.filter(function (x) { return x.id === String(l.produitId); })[0];
       if (!p) throw new Error('Produit introuvable : ' + l.produitId);
-      var qte = num_(l.qte), pu = num_(l.pu);
+      var qte, pu, nbSacs = num_(l.nbSacs), kgSac = 0;
+      if (nbSacs > 0) {
+        kgSac = num_(l.kgSac) > 0 ? num_(l.kgSac) : p.kgSac;
+        if (!(kgSac > 0)) throw new Error('Indiquez le poids (kg) d\'un sac pour ' + p.nom + '.');
+        qte = round_(nbSacs * kgSac, 3);
+        pu = round_(num_(l.prixSac) / kgSac, 4);
+        if (kgSac !== p.kgSac) kgUpdates[p.id] = kgSac;
+      } else { nbSacs = 0; qte = num_(l.qte); pu = num_(l.pu); }
       if (qte <= 0) throw new Error('Quantité invalide pour ' + p.nom);
       if (pu < 0) throw new Error('Prix invalide pour ' + p.nom);
       var cout = round_(unitCost_(achats, p, date), 2);
@@ -641,10 +660,11 @@ function addSale_(store, d) {
       store.append('Ventes', {
         id: batch + '-' + (i + 1), date: date, produitId: p.id, produit: p.nom, categorie: p.categorie,
         qte: qte, pu: pu, ca: round_(qte * pu, 0), cout: cout, marge: round_(qte * (pu - cout), 0),
-        paiement: payment, note: String(d.note || '')
+        paiement: payment, note: String(d.note || ''), nbSacs: nbSacs || '', kgSac: kgSac || ''
       });
       total += qte * pu; margin += qte * (pu - cout);
     });
+    Object.keys(kgUpdates).forEach(function (id) { store.update('Produits', id, { kgSac: kgUpdates[id] }); });
     return { id: batch, total: round_(total, 0), marge: round_(margin, 0), warnings: warnings };
   });
 }
@@ -1102,15 +1122,22 @@ function drawGrid() {
 }
 function addToCart(id) {
   var p = prodById(id), ex = S.cart.filter(function (l) { return l.id === id; })[0];
-  if (ex) ex.qte = +(ex.qte + 1).toFixed(3); else S.cart.push({ id: id, qte: 1, pu: p.prixVente || 0 });
+  if (ex) ex.qte = +(ex.qte + 1).toFixed(3); else S.cart.push({ id: id, qte: 1, pu: p.prixVente || 0, mode: 'kg', kgSac: p.kgSac || '' });
   if (!ex && !p.prixVente) S.cartOpen = true;
   drawCart();
   if (!ex && !p.prixVente) setTimeout(function () { var i2 = $('.line[data-id="' + id + '"] .pu'); if (i2) i2.focus(); }, 80);
 }
+function lineKg(l) { return l.mode === 'sac' ? (parseFloat(l.kgSac) || 0) : 1; }
 function cartTotals() {
   var t = 0, m = 0;
-  S.cart.forEach(function (l) { var s = stockById(l.id); t += l.qte * l.pu; m += l.qte * (l.pu - (s ? s.coutMoyen : 0)); });
+  S.cart.forEach(function (l) { var s = stockById(l.id), cost = s ? s.coutMoyen : 0; t += l.qte * l.pu; m += l.qte * (l.pu - lineKg(l) * cost); });
   return { total: t, marge: m, n: S.cart.length };
+}
+function setLineMode(l, mode) {
+  var p = prodById(l.id);
+  l.mode = mode;
+  if (mode === 'sac') { l.kgSac = l.kgSac || p.kgSac || ''; l.qte = 1; l.pu = p.prixVente && l.kgSac ? Math.round(p.prixVente * l.kgSac) : 0; }
+  else { l.qte = 1; l.pu = p.prixVente || 0; }
 }
 function drawCart() {
   var c = $('#cart'); if (!c) return;
@@ -1120,9 +1147,11 @@ function drawCart() {
   bar.innerHTML = '<span>🛒 ' + t.n + ' article' + (t.n > 1 ? 's' : '') + '</span><span>' + money(t.total) + '</span>';
   c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><h2>Panier</h2>' + (window.innerWidth <= 900 ? '<button class="btn sm ghost" id="cclose">Fermer ✕</button>' : '') + '</div>' +
     (S.cart.length ? '<div class="hint">Quantité et prix modifiables</div>' + S.cart.map(function (l) {
-      var p = prodById(l.id);
-      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + esc(p.unite) + '</div></div>' +
-        '<input class="qt" type="number" inputmode="decimal" step="any" min="0" value="' + l.qte + '" aria-label="Quantité"><input class="pu" type="number" inputmode="decimal" step="any" min="0" value="' + l.pu + '" aria-label="Prix unitaire"><button class="x" aria-label="Retirer">×</button></div>';
+      var p = prodById(l.id), sac = l.mode === 'sac', canSac = p.unite === 'kg' || p.kgSac > 0;
+      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + (sac ? 'sac(s) · prix du sac' : esc(p.unite) + ' · prix unitaire') + '</div></div>' +
+        '<input class="qt" type="number" inputmode="decimal" step="any" min="0" value="' + l.qte + '" aria-label="Quantité"><input class="pu" type="number" inputmode="decimal" step="any" min="0" value="' + l.pu + '" aria-label="Prix unitaire"><button class="x" aria-label="Retirer">×</button>' +
+        (canSac ? '<div class="sacrow"><button class="chip sm' + (!sac ? ' on' : '') + '" data-m="kg">Au kilo</button><button class="chip sm' + (sac ? ' on' : '') + '" data-m="sac">Au sac</button>' +
+          (sac ? '<label>Poids du sac (kg)<input class="kg" type="number" inputmode="decimal" step="any" min="0" value="' + (l.kgSac || '') + '" placeholder="à saisir"></label>' + (parseFloat(l.kgSac) ? '<span class="eq">= ' + qty(l.qte * l.kgSac) + ' kg</span>' : '') : '') + '</div>' : '') + '</div>';
     }).join('') +
     '<div class="chips" style="margin-top:12px">' + S.data.paiements.map(function (p) { return '<button class="chip' + (S.pay === p ? ' on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('') + '</div>' +
     '<input id="cnote" placeholder="Client / note (facultatif)" value="' + esc(S.note) + '">' +
@@ -1134,18 +1163,22 @@ function drawCart() {
   var cc = $('#cclose', c); if (cc) cc.onclick = function () { S.cartOpen = false; drawCart(); };
   $$('.line', c).forEach(function (row) {
     var l = S.cart.filter(function (x) { return x.id === row.dataset.id; })[0];
-    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; softTotals(); };
-    $('.pu', row).oninput = function (e) { l.pu = parseFloat(String(e.target.value).replace(',', '.')) || 0; softTotals(); };
+    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; var eq = $('.eq', row); if (eq && l.kgSac) eq.textContent = '= ' + qty(l.qte * l.kgSac) + ' kg'; softTotals(); };
+    $('.pu', row).oninput = function (e) { l.pu = parseFloat(String(e.target.value).replace(',', '.')) || 0; l.priceTouched = true; softTotals(); };
     $('.x', row).onclick = function () { S.cart = S.cart.filter(function (x) { return x !== l; }); drawCart(); };
+    $$('[data-m]', row).forEach(function (b) { b.onclick = function () { if (l.mode !== b.dataset.m) { setLineMode(l, b.dataset.m); drawCart(); } }; });
+    var kg = $('.kg', row); if (kg) kg.oninput = function (e) { l.kgSac = parseFloat(String(e.target.value).replace(',', '.')) || ''; var p = prodById(l.id); if (p.prixVente && l.kgSac && !l.priceTouched) { l.pu = Math.round(p.prixVente * l.kgSac); $('.pu', row).value = l.pu; } var eq = $('.eq', row); if (eq) eq.textContent = l.kgSac ? '= ' + qty(l.qte * l.kgSac) + ' kg' : ''; softTotals(); };
   });
   $$('[data-p]', c).forEach(function (b) { b.onclick = function () { S.pay = b.dataset.p; drawCart(); }; });
   var cn = $('#cnote', c); if (cn) cn.oninput = function (e) { S.note = e.target.value; };
   var cl = $('#cclear', c); if (cl) cl.onclick = function () { S.cart = []; S.cartOpen = false; drawCart(); };
   var cs = $('#csave', c); if (cs) cs.onclick = function () {
     if (S.cart.some(function (l) { return !(l.qte > 0); })) return toast('Vérifiez les quantités du panier.', true);
+    var nosac = S.cart.filter(function (l) { return l.mode === 'sac' && !(parseFloat(l.kgSac) > 0); })[0];
+    if (nosac) return toast('Indiquez le poids du sac (kg) pour ' + prodById(nosac.id).nom + '.', true);
     if (S.cart.some(function (l) { return !(l.pu > 0); }) && !confirm('Un article a un prix à 0 FCFA. Enregistrer quand même ?')) return;
     busy(cs, function () {
-      return api('addSale', { date: S.saleDate, paiement: S.pay, note: S.note, lines: S.cart.map(function (l) { return { produitId: l.id, qte: l.qte, pu: l.pu }; }) }).then(function (r) {
+      return api('addSale', { date: S.saleDate, paiement: S.pay, note: S.note, lines: S.cart.map(function (l) { return l.mode === 'sac' ? { produitId: l.id, nbSacs: l.qte, kgSac: l.kgSac, prixSac: l.pu } : { produitId: l.id, qte: l.qte, pu: l.pu }; }) }).then(function (r) {
         S.cart = []; S.note = ''; S.cartOpen = false;
         toast('✅ Vente enregistrée : ' + money(r.total) + ' (bénéfice ' + money(r.marge) + ')');
         if (r.warnings && r.warnings.length) setTimeout(function () { toast('⚠️ ' + r.warnings.join(' '), true); }, 2800);
@@ -1430,7 +1463,7 @@ function vHistory(w) {
   $('#hf').onchange = function () { H.from = this.value; vHistory(w); }; $('#ht').onchange = function () { H.to = this.value; vHistory(w); };
   var hc = $('#hc'); if (hc) hc.onchange = function () { H.credit = this.value === '1'; vHistory(w); };
   var cols = {
-    Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
+    Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte) + (r.nbSacs ? '<div style="font-size:12px;color:var(--muted)">' + qty(r.nbSacs) + ' sac(s) × ' + qty(r.kgSac) + ' kg</div>' : ''); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
     Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Sacs', function (r) { return r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) + ' kg' : '—'; }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1]],
     Depenses: [['Date', function (r) { return frShort(r.date); }], ['Catégorie', function (r) { return esc(r.categorie); }], ['Libellé', function (r) { return esc(r.libelle); }], ['Montant', function (r) { return '<b>' + nf.format(r.montant) + '</b>'; }, 1]],
     Pertes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['Motif', function (r) { return esc(r.motif); }], ['Valeur', function (r) { return '<b>' + nf.format(r.qte * r.cout) + '</b>'; }, 1]]

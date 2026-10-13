@@ -44,6 +44,8 @@ Après toute modification du code (recopier les fichiers modifiés dans l'édite
    - **Au poids / à l'unité** : quantité et prix unitaire ou total payé.
    Le stock et le coût moyen se mettent à jour. La feuille `Achats` conserve le nombre de sacs et les kg par sac.
 3. **Vendre** : touchez les produits vendus, ajustez quantité et prix si besoin, choisissez le paiement (espèces, Mobile Money, crédit), puis enregistrez.
+   - **Vente au sac** : pour un produit au kilo, choisissez **Au sac** sur la ligne du panier, puis indiquez le nombre de sacs, le **poids du sac (kg)** et le **prix du sac**. L'application déduit du stock nombre de sacs × poids (ex : 2 sacs de 25 kg = 50 kg) et calcule le bénéfice avec le coût au kilo.
+   - Le poids des sacs n'est jamais supposé : vous le saisissez vous-même, produit par produit (fiche Produits, à l'achat ou directement à la vente). Il est mémorisé pour les opérations suivantes et reste modifiable. Sans poids de sac, la vente au sac est refusée.
 4. **Accueil / Rapports** : chiffre d'affaires, bénéfice brut et bénéfice net du jour, de la semaine, du mois ou d'une période choisie.
 5. **Dépenses** et **Stock > Perte** : électricité, glace, transport, poisson avarié, etc. Ils réduisent le bénéfice net.
 

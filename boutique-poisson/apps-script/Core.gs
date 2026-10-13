@@ -36,7 +36,8 @@ var SCHEMA = {
     { key: 'ca', label: "Chiffre d'affaires (FCFA)", formula: '=[qte]*[pu]' },
     { key: 'cout', label: "Coût d'achat unitaire (FCFA)" },
     { key: 'marge', label: 'Bénéfice brut (FCFA)', formula: '=[qte]*([pu]-[cout])' },
-    { key: 'paiement', label: 'Paiement' }, { key: 'note', label: 'Client / Note' }
+    { key: 'paiement', label: 'Paiement' }, { key: 'note', label: 'Client / Note' },
+    { key: 'nbSacs', label: 'Nombre de sacs / cartons vendus' }, { key: 'kgSac', label: 'Kg par sac / carton' }
   ],
   Depenses: [
     { key: 'id', label: 'ID' }, { key: 'date', label: 'Date', text: true },
@@ -150,6 +151,12 @@ function stockTable_(store) {
 
 /* ---------- Écritures ---------- */
 
+/**
+ * Vente. Chaque ligne est soit au poids / à l'unité {produitId, qte, pu},
+ * soit au sac {produitId, nbSacs, kgSac, prixSac} : la quantité enregistrée est
+ * alors nbSacs x kgSac (dans l'unité du produit) et le prix unitaire prixSac / kgSac.
+ * Le poids du sac saisi est mémorisé sur la fiche produit.
+ */
 function addSale_(store, d) {
   var date = validDate_(d.date), lines = d.lines || [];
   if (!lines.length) throw new Error('Le panier est vide.');
@@ -157,11 +164,18 @@ function addSale_(store, d) {
   return store.lock(function () {
     var products = listProducts_(store), achats = store.all('Achats'), stock = {}, warnings = [], total = 0, margin = 0;
     stockTable_(store).forEach(function (s) { stock[s.id] = s.stock; });
-    var batch = uid_('V');
+    var batch = uid_('V'), kgUpdates = {};
     lines.forEach(function (l, i) {
       var p = products.filter(function (x) { return x.id === String(l.produitId); })[0];
       if (!p) throw new Error('Produit introuvable : ' + l.produitId);
-      var qte = num_(l.qte), pu = num_(l.pu);
+      var qte, pu, nbSacs = num_(l.nbSacs), kgSac = 0;
+      if (nbSacs > 0) {
+        kgSac = num_(l.kgSac) > 0 ? num_(l.kgSac) : p.kgSac;
+        if (!(kgSac > 0)) throw new Error('Indiquez le poids (kg) d\'un sac pour ' + p.nom + '.');
+        qte = round_(nbSacs * kgSac, 3);
+        pu = round_(num_(l.prixSac) / kgSac, 4);
+        if (kgSac !== p.kgSac) kgUpdates[p.id] = kgSac;
+      } else { nbSacs = 0; qte = num_(l.qte); pu = num_(l.pu); }
       if (qte <= 0) throw new Error('Quantité invalide pour ' + p.nom);
       if (pu < 0) throw new Error('Prix invalide pour ' + p.nom);
       var cout = round_(unitCost_(achats, p, date), 2);
@@ -170,10 +184,11 @@ function addSale_(store, d) {
       store.append('Ventes', {
         id: batch + '-' + (i + 1), date: date, produitId: p.id, produit: p.nom, categorie: p.categorie,
         qte: qte, pu: pu, ca: round_(qte * pu, 0), cout: cout, marge: round_(qte * (pu - cout), 0),
-        paiement: payment, note: String(d.note || '')
+        paiement: payment, note: String(d.note || ''), nbSacs: nbSacs || '', kgSac: kgSac || ''
       });
       total += qte * pu; margin += qte * (pu - cout);
     });
+    Object.keys(kgUpdates).forEach(function (id) { store.update('Produits', id, { kgSac: kgUpdates[id] }); });
     return { id: batch, total: round_(total, 0), marge: round_(margin, 0), warnings: warnings };
   });
 }

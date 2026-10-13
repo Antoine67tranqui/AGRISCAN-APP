@@ -93,3 +93,19 @@ assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",n
 a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",qte:12.5,pu:1000})`);
 eq(a.qte, 12.5, 'saisie au poids'); eq(a.nbSacs, '', 'pas de sacs');
 console.log('OK : achats par sacs / cartons');
+// Vente au sac : 2 sacs de 25 kg à 30 000 FCFA le sac (prix au kg 1 200) sur le sylvi moyen (coût moyen ~1 196,97)
+const st0 = T(`stockTable_(store).filter(function(p){return p.id==="${sy}"})[0]`);
+r = T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${sy}",nbSacs:2,kgSac:25,prixSac:30000}]})`);
+eq(r.total, 60000, 'CA vente au sac');
+const vl = T('store.all("Ventes")').filter(v => v.produitId === sy)[0];
+eq(vl.qte, 50, 'qte vendue = 2 x 25 kg'); eq(vl.pu, 1200, 'prix au kg déduit'); eq(vl.nbSacs, 2, 'sacs vendus'); eq(vl.kgSac, 25, 'kg/sac vendu');
+const st1 = T(`stockTable_(store).filter(function(p){return p.id==="${sy}"})[0]`);
+eq(Math.round((st0.stock - st1.stock) * 1000) / 1000, 50, 'stock diminue de 50 kg');
+eq(T(`listProducts_(store).filter(function(p){return p.id==="${sy}"})[0]`).kgSac, 25, 'poids du sac mémorisé');
+// Poids de sac saisi à la vente sur un produit sans poids : mémorisé
+const ai = T('id("Cuisse de poulet rapide")');
+T(`addPurchase_(store,{date:"2026-10-09",produitId:"${ai}",qte:100,pu:1500})`);
+T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${ai}",nbSacs:1,kgSac:10,prixSac:20000}]})`);
+eq(T(`listProducts_(store).filter(function(p){return p.id==="${ai}"})[0]`).kgSac, 10, 'poids saisi à la vente mémorisé');
+assert.throws(() => T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${T('id("Pointe")')}",nbSacs:1,prixSac:20000}]})`), /poids/); pass++;
+console.log('OK : vente au sac');
