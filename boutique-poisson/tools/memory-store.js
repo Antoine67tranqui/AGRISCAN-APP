@@ -18,6 +18,6 @@ MemoryStore_.prototype.update = function (t, id, patch) {
 };
 MemoryStore_.prototype.lock = function (fn) { return fn(); };
 function seedProducts_() {
-  return CATALOGUE.map(function (r, i) { return { id: 'P' + ('000' + (i + 1)).slice(-4), categorie: r[0], nom: r[1], unite: r[2], prixAchat: '', prixVente: '', seuil: '', actif: 'OUI' }; });
+  return CATALOGUE.map(function (r, i) { return { id: 'P' + ('000' + (i + 1)).slice(-4), categorie: r[0], nom: r[1], unite: r[2], prixAchat: r[3] || '', prixVente: r[4] || '', seuil: '', actif: 'OUI', kgSac: r[5] || '' }; });
 }
 if (typeof module !== 'undefined') module.exports = { MemoryStore_: MemoryStore_, seedProducts_: seedProducts_ };

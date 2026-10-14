@@ -164,8 +164,8 @@ function setup() {
   });
   var prod = ss.getSheetByName('Produits');
   if (prod.getLastRow() < 2) {
-    var rows = CATALOGUE.map(function (r, i) { return ['P' + ('000' + (i + 1)).slice(-4), r[0], r[1], r[2], '', '', '', 'OUI']; });
-    prod.getRange(2, 1, rows.length, 8).setValues(rows);
+    var rows = CATALOGUE.map(function (r, i) { return ['P' + ('000' + (i + 1)).slice(-4), r[0], r[1], r[2], r[3] || '', r[4] || '', '', 'OUI', r[5] || '']; });
+    prod.getRange(2, 1, rows.length, 9).setValues(rows);
   }
   ['Stock', 'Journalier', 'Mensuel'].forEach(function (n) { if (!ss.getSheetByName(n)) { ss.insertSheet(n); created.push(n); } });
   if (created.indexOf('Stock') >= 0) buildStockSheet_(ss.getSheetByName('Stock'));

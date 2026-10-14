@@ -37,7 +37,7 @@ const ctx = require('./load-gas')({
 const vm = require('vm'), run = c => vm.runInContext(c, ctx);
 run('var created = setup();');
 assert.strictEqual(run('JSON.stringify(created.sort())'), JSON.stringify(['Achats','Depenses','Journalier','Mensuel','Pertes','Produits','Stock','Ventes']), 'feuilles créées');
-assert.strictEqual(sheets.Produits.getLastRow(), 262, 'produits amorcés (1 en-tête + 261)');
+assert.strictEqual(sheets.Produits.getLastRow(), 312, 'produits amorcés (1 en-tête + 311)');
 assert.strictEqual(sheets.Ventes.rows[0][9], 'Bénéfice brut (FCFA)', 'en-tête Ventes');
 // Parcours complet via api()
 const til = run('api("bootstrap").produits[0].id');

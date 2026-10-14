@@ -11,7 +11,7 @@ let pass = 0; const ok = (c, m) => { assert.ok(c, m); pass++; };
 const eq = (a, b, m) => { assert.strictEqual(a, b, m + ` (obtenu ${a}, attendu ${b})`); pass++; };
 
 // Catalogue
-eq(T('store.all("Produits").length'), 261, 'catalogue amorcé');
+eq(T('store.all("Produits").length'), 311, 'catalogue amorcé');
 const til = T('id("Tilapia frais (Oreochromis")');
 T(`saveProduct_(store, {id:"${til}", nom:"Tilapia frais (Oreochromis niloticus)", categorie:"Poissons frais et élevage", unite:"kg", prixAchat:1000, prixVente:1500, seuil:20, actif:true})`);
 // Achats : 100 @1000 puis 100 @1200 => coût moyen 1100
@@ -65,7 +65,7 @@ const dash = T('dashboard_(store,"2026-10-08")');
 eq(dash.jour.totaux.ca, 8000, 'dashboard CA du jour'); ok(dash.valeurStock > 0, 'valeur stock');
 // Nouveau produit
 const np = T('saveProduct_(store,{nom:"Poisson test",categorie:"Test",unite:"kg",prixAchat:1,prixVente:2})');
-eq(np.id, 'P0262', 'ID auto-incrémenté');
+eq(np.id, 'P0312', 'ID auto-incrémenté');
 console.log(`OK : ${pass} vérifications réussies (Core.gs)`);
 const neutre = T('stockTable_(store)').filter(s => s.id !== til && s.entrees === 0 && s.sorties === 0 && s.pertes === 0)[0];
 assert.strictEqual(neutre.statut, 'neutre'); console.log('OK : produit sans mouvement = neutre');
@@ -87,7 +87,7 @@ eq(a.qte, 75, 'qte 3x25'); eq(Math.round(a.pu * a.qte), 83000, 'total payé cons
 // Coût moyen pondéré : (275000+150000+83000)/(250+100+75)
 sst = T(`stockTable_(store).filter(function(p){return p.id==="${sy}"})[0]`);
 eq(sst.coutMoyen, Math.round((508000/425)*100)/100, 'coût moyen pondéré');
-assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:2,pu:1000})`), /poids/); pass++;
+assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:2,pu:1000})`), /contenu/); pass++;
 assert.throws(() => T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",nbSacs:2,kgSac:25})`), /prix/); pass++;
 // Saisie au poids inchangée
 a = T(`addPurchase_(store,{date:"2026-10-09",produitId:"${sy}",qte:12.5,pu:1000})`);
@@ -107,5 +107,24 @@ const ai = T('id("Cuisse de poulet rapide")');
 T(`addPurchase_(store,{date:"2026-10-09",produitId:"${ai}",qte:100,pu:1500})`);
 T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${ai}",nbSacs:1,kgSac:10,prixSac:20000}]})`);
 eq(T(`listProducts_(store).filter(function(p){return p.id==="${ai}"})[0]`).kgSac, 10, 'poids saisi à la vente mémorisé');
-assert.throws(() => T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${T('id("Pointe")')}",nbSacs:1,prixSac:20000}]})`), /poids/); pass++;
+assert.throws(() => T(`addSale_(store,{date:"2026-10-10",lines:[{produitId:"${T('id("Pointe")')}",nbSacs:1,prixSac:20000}]})`), /contenu/); pass++;
 console.log('OK : vente au sac');
+
+// Bon d'achat multi-lignes, comme un reçu de grossiste (quantité en cartons fractionnaires, prix du carton)
+const tg = T('id("Tomate en boîte 210")'), sp = T('id("Spaghetti (paquet)")');
+let b = T(`addPurchases_(store,{date:"2026-10-11",fournisseur:"Grossiste",lines:[
+  {produitId:"${tg}",nbSacs:0.5,kgSac:48,prixSac:8900},
+  {produitId:"${sp}",nbSacs:1,kgSac:20,prixSac:6400},
+  {produitId:"${sy}",nbSacs:2,kgSac:25,montant:60000}]})`);
+eq(b.lignes, 3, 'bon : 3 lignes'); eq(b.total, 4450 + 6400 + 60000, 'bon : total = 0,5x8900 + 6400 + 60000');
+let tgs = T(`stockTable_(store).filter(function(p){return p.id==="${tg}"})[0]`);
+eq(tgs.stock, 24, '0,5 carton de 48 = 24 unités'); eq(tgs.coutMoyen, Math.round(8900 / 48 * 100) / 100, 'coût unitaire = prix carton / contenu');
+// Tout ou rien : une ligne invalide annule le bon
+const nAchats = T('store.all("Achats").length');
+assert.throws(() => T(`addPurchases_(store,{date:"2026-10-11",lines:[{produitId:"${tg}",nbSacs:1,kgSac:48,prixSac:8900},{produitId:"${sp}",nbSacs:1,prixSac:6400}]})`), /Ligne 2.*contenu/); pass++;
+eq(T('store.all("Achats").length'), nAchats, 'bon invalide : rien enregistré');
+assert.throws(() => T('addPurchases_(store,{date:"2026-10-11",lines:[]})'), /vide/); pass++;
+// Vente d'un carton d'un produit à l'unité : 1 carton de 48 boîtes à 12 500
+r = T(`addSale_(store,{date:"2026-10-12",lines:[{produitId:"${tg}",nbSacs:0.5,kgSac:48,prixSac:12500}]})`);
+eq(r.total, 6250, 'vente d\'un demi-carton'); 
+console.log('OK : bon d\'achat multi-lignes et cartons en unités');

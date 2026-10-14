@@ -1,7 +1,9 @@
 /**
- * Catalogue de départ : [catégorie, produit, unité].
- * Aucun prix n'est renseigné : les prix d'achat et de vente varient selon le
- * fournisseur, la saison et le marché, ils sont à saisir par le commerçant.
+ * Catalogue de départ : [catégorie, produit, unité, prix d'achat unitaire, prix de vente, contenu d'un sac ou carton].
+ * Les trois derniers champs sont facultatifs. Ils ne sont renseignés que pour les articles
+ * relevés dans le cahier « Point des achats » et sur les reçus du commerçant, et pour les prix
+ * de vente que le commerçant a communiqués (sylvi, cuisses, hareng). Un champ vide = à saisir.
+ * Le contenu d'un sac ou carton est exprimé dans l'unité du produit (kg ou nombre d'unités).
  * La liste est modifiable à tout moment (feuille « Produits » ou onglet Produits de l'app).
  */
 var CATEGORIES = [
@@ -51,7 +53,7 @@ var CATALOGUE = [
   ['Poissons congelés', 'Maquereau congelé (carton)', 'carton'],
   ['Poissons congelés', 'Maquereau congelé (détail)', 'kg'],
   ['Poissons congelés', 'Hareng congelé (carton)', 'carton'],
-  ['Poissons congelés', 'Hareng congelé (détail)', 'kg'],
+  ['Poissons congelés', 'Hareng congelé (détail)', 'kg', 1056.52, 1800, 23],
   ['Poissons congelés', 'Tilapia congelé (carton)', 'carton'],
   ['Poissons congelés', 'Tilapia congelé (détail)', 'kg'],
   ['Poissons congelés', 'Merlu congelé (carton)', 'carton'],
@@ -99,7 +101,7 @@ var CATALOGUE = [
   // Viandes et volailles congelées
   ['Viandes et volailles congelées', 'Poulet entier congelé', 'pièce'],
   ['Viandes et volailles congelées', 'Poulet congelé (carton)', 'carton'],
-  ['Viandes et volailles congelées', 'Cuisse de poulet normal', 'kg'],
+  ['Viandes et volailles congelées', 'Cuisse de poulet normal', 'kg', '', 2100, ''],
   ['Viandes et volailles congelées', 'Ailes de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Dos de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Gésiers de poulet', 'kg'],
@@ -186,7 +188,7 @@ var CATALOGUE = [
   ['Huiles et matières grasses', 'Margarine', 'boîte'],
   ['Huiles et matières grasses', 'Beurre', 'pièce'],
   // Épicerie et condiments
-  ['Épicerie et condiments', 'Sucre en kilo', 'kg'],
+  ['Épicerie et condiments', 'Sucre Delta en kilo', 'kg', 450, 600, 50],
   ['Épicerie et condiments', 'Sucre en morceaux (boîte)', 'boîte'],
   ['Épicerie et condiments', 'Sucre (sac 50 kg)', 'sac'],
   ['Épicerie et condiments', 'Sel fin', 'kg'],
@@ -272,7 +274,7 @@ var CATALOGUE = [
   ['Entretien, hygiène et insecticides', 'Lessive liquide', 'bouteille'],
   ['Entretien, hygiène et insecticides', 'Eau de Javel', 'bouteille'],
   ['Entretien, hygiène et insecticides', 'Liquide vaisselle', 'bouteille'],
-  ['Entretien, hygiène et insecticides', 'Papier hygiénique', 'rouleau'],
+  ['Entretien, hygiène et insecticides', 'Papier hygiénique', 'rouleau', 150, 200, 10],
   ['Entretien, hygiène et insecticides', 'Mouchoirs / serviettes', 'paquet'],
   ['Entretien, hygiène et insecticides', 'Dentifrice', 'tube'],
   ['Entretien, hygiène et insecticides', 'Brosse à dents', 'pièce'],
@@ -297,9 +299,60 @@ var CATALOGUE = [
   ['Emballages et consommables', 'Cure-dents', 'boîte'],
   ['Emballages et consommables', 'Charbon de bois', 'sac'],
   // Ajouts (produits au kilo achetés en sacs ou cartons)
-  ['Poissons congelés', 'Poisson sylvi petit calibre', 'kg'],
-  ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg'],
-  ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg'],
-  ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg'],
-  ['Viandes et volailles congelées', 'Pointe (bout d\'aile de poulet normal)', 'kg']
+  ['Poissons congelés', 'Poisson sylvi petit calibre', 'kg', '', 1300, ''],
+  ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg', '', 1600, ''],
+  ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg', '', 1900, ''],
+  ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg', '', 1800, ''],
+  ['Viandes et volailles congelées', 'Pointe (bout d\'aile de poulet normal)', 'kg'],
+  // Articles du cahier « Point des achats » et des reçus
+  ['Conserves', 'Sardine Atlanta C50 (boîte)', 'boîte', 440, 550, ''],
+  ['Conserves', 'Sardine Bonne Journée (boîte)', 'boîte', 300, 400, ''],
+  ['Conserves', 'Sardine Casa (boîte)', 'boîte', 276, '', ''],
+  ['Conserves', 'Tomate Royale 210 g', 'boîte', 185.42, 250, 48],
+  ['Conserves', 'Tomate Grace 70 g', 'boîte', 84, 100, 50],
+  ['Conserves', 'Tomate Bonjour 400 g', 'boîte', 320.83, 500, 24],
+  ['Entretien, hygiène et insecticides', 'Softcare grand blanc', 'pièce', 47, 75, 50],
+  ['Entretien, hygiène et insecticides', 'Softcare chapelet (5C)', 'pièce', 100, 150, 10],
+  ['Entretien, hygiène et insecticides', 'Softcare adulte jaune', 'pièce', 450, '', ''],
+  ['Entretien, hygiène et insecticides', 'Omo Viva 170 g', 'sachet', 196.15, 225, 26],
+  ['Entretien, hygiène et insecticides', 'Omo Viva 80 g', 'sachet', 96, 125, 50],
+  ['Entretien, hygiène et insecticides', 'Omo Wawe 70 g', 'sachet', 94.12, 125, 51],
+  ['Entretien, hygiène et insecticides', 'Savon Palmida (vrai)', 'pièce', 150, 200, ''],
+  ['Entretien, hygiène et insecticides', 'Savon Crown (72C)', 'pièce', 550, 600, ''],
+  ['Entretien, hygiène et insecticides', 'Savon Kampé grand (unité)', 'pièce', '', 275, ''],
+  ['Entretien, hygiène et insecticides', 'Couche La Lune', 'pièce', 40, 50, 50],
+  ['Entretien, hygiène et insecticides', 'Papier à table Bella', 'pièce', 200, 250, ''],
+  ['Entretien, hygiène et insecticides', 'Papier Chérie (cartouche)', 'pièce', 70, 100, 10],
+  ['Entretien, hygiène et insecticides', 'Mosquito Super Kill', 'pièce', 170, '', ''],
+  ['Entretien, hygiène et insecticides', 'Pâte Charlie petit', 'pièce', 166.67, 200, 12],
+  ['Entretien, hygiène et insecticides', 'Pâte Charlie gros', 'pièce', '', 400, ''],
+  ['Entretien, hygiène et insecticides', 'Bougie 65C moyen (unité)', 'pièce', '', '', ''],
+  ['Entretien, hygiène et insecticides', 'Bougie 30C grande (unité)', 'pièce', '', '', ''],
+  ['Entretien, hygiène et insecticides', 'Allumette Roch (unité)', 'pièce', '', '', ''],
+  ['Pâtes et couscous', 'Spaghetti Doga', 'paquet', 320, 375, 20],
+  ['Pâtes et couscous', 'Spaghetti Matanti 500 g', 'paquet', 375, '', ''],
+  ['Pâtes et couscous', 'Spaghetti Bonjour 200 g', 'paquet', 150, 200, 40],
+  ['Pâtes et couscous', 'Spaghetti Bella 500 g', 'paquet', 310, 350, 20],
+  ['Pâtes et couscous', 'Coquillette Matanti 200 g', 'paquet', 187.5, 225, 40],
+  ['Pâtes et couscous', 'Coquillette Bonjour 200 g', 'paquet', 182.5, 200, 40],
+  ['Pâtes et couscous', 'Coquillette Bonjour 500 g', 'paquet', 335, 400, 20],
+  ['Pâtes et couscous', 'Indomie Suprême grand', 'paquet', 152.5, 225, 40],
+  ['Pâtes et couscous', 'Couscous Ginny 500 g', 'paquet', 450, 500, 20],
+  ['Pâtes et couscous', 'Couscous d\'Or', 'paquet', 435, '', 20],
+  ['Céréales, féculents et farines', 'Farine MOA en kilo', 'kg', 414, 500, 50],
+  ['Huiles et matières grasses', 'Beurre Ginny', 'pièce', 316.67, 400, 6],
+  ['Produits laitiers, œufs et boissons', 'Lait Peak vrai 160 g', 'sachet', 500, 600, 48],
+  ['Produits laitiers, œufs et boissons', 'Lait Cébon original', 'pièce', 937.5, 1100, ''],
+  ['Produits laitiers, œufs et boissons', 'Anutrilac (chapelet 10C)', 'pièce', 130, '', 10],
+  ['Produits laitiers, œufs et boissons', 'Nescafé sachet (15C)', 'sachet', 433, '', ''],
+  ['Produits laitiers, œufs et boissons', 'Cérélac sachet (8C chapelet)', 'sachet', '', '', ''],
+  ['Épicerie et condiments', 'Lipton thé (80C unité)', 'boîte', 400, '', ''],
+  ['Épicerie et condiments', 'Café Roche 50 g', 'pièce', 350, '', ''],
+  ['Épicerie et condiments', 'Levure instant Success', 'paquet', 1300, '', ''],
+  ['Épicerie et condiments', 'Mevia grand (unité)', 'pièce', 2417, 2600, ''],
+  ['Épicerie et condiments', 'Noix de muscade (chapelet)', 'pièce', 60, 100, 10],
+  ['Épicerie et condiments', 'Tiger', 'pièce', 110, 150, ''],
+  ['Emballages et consommables', 'Sac pour emballer', 'pièce', 100, '', ''],
+  ['Légumes et produits frais', 'Pommes frites Ritchi (carton)', 'carton', 14000, '', ''],
+  ['Poissons congelés', 'Maquereau Mauritanie MK 25+', 'kg', '', '', '']
 ];

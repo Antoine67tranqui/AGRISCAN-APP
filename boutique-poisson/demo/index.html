@@ -102,6 +102,12 @@ tr:hover td{background:color-mix(in srgb,var(--brand-soft) 45%,transparent)}
 .line .nm{font-weight:600;font-size:14px}
 .line input{padding:7px 8px;text-align:right}
 .line .sacrow{grid-column:1/-1;display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:2px}
+.bline{border:1px solid var(--line);border-radius:12px;padding:8px 10px;margin-bottom:8px;background:color-mix(in srgb,var(--brand-soft) 30%,var(--card))}
+.bline .brow1{display:flex;gap:6px;align-items:center} .bline .brow1 .x{border:0;background:transparent;color:var(--bad);font-size:22px;cursor:pointer;padding:0 6px}
+.bline .brow2{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:6px;margin-top:6px}
+.bline .brow2 label{font-size:11.5px;font-weight:600;color:var(--muted);margin:0} .bline .brow2 input,.bline .brow2 select{padding:7px 8px;margin-top:2px;font-size:14px}
+.bline .bsum{font-size:12.5px;color:var(--muted);margin-top:6px;min-height:16px}
+@media(max-width:560px){.bline .brow2{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .chip.sm{padding:3px 10px;font-size:12.5px}
 .sacrow label{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted);font-weight:600;margin:0}
 .sacrow label input{width:76px;padding:5px 7px}
@@ -169,9 +175,11 @@ tr:hover td{background:color-mix(in srgb,var(--brand-soft) 45%,transparent)}
 
 <script>
 /**
- * Catalogue de départ : [catégorie, produit, unité].
- * Aucun prix n'est renseigné : les prix d'achat et de vente varient selon le
- * fournisseur, la saison et le marché, ils sont à saisir par le commerçant.
+ * Catalogue de départ : [catégorie, produit, unité, prix d'achat unitaire, prix de vente, contenu d'un sac ou carton].
+ * Les trois derniers champs sont facultatifs. Ils ne sont renseignés que pour les articles
+ * relevés dans le cahier « Point des achats » et sur les reçus du commerçant, et pour les prix
+ * de vente que le commerçant a communiqués (sylvi, cuisses, hareng). Un champ vide = à saisir.
+ * Le contenu d'un sac ou carton est exprimé dans l'unité du produit (kg ou nombre d'unités).
  * La liste est modifiable à tout moment (feuille « Produits » ou onglet Produits de l'app).
  */
 var CATEGORIES = [
@@ -221,7 +229,7 @@ var CATALOGUE = [
   ['Poissons congelés', 'Maquereau congelé (carton)', 'carton'],
   ['Poissons congelés', 'Maquereau congelé (détail)', 'kg'],
   ['Poissons congelés', 'Hareng congelé (carton)', 'carton'],
-  ['Poissons congelés', 'Hareng congelé (détail)', 'kg'],
+  ['Poissons congelés', 'Hareng congelé (détail)', 'kg', 1056.52, 1800, 23],
   ['Poissons congelés', 'Tilapia congelé (carton)', 'carton'],
   ['Poissons congelés', 'Tilapia congelé (détail)', 'kg'],
   ['Poissons congelés', 'Merlu congelé (carton)', 'carton'],
@@ -269,7 +277,7 @@ var CATALOGUE = [
   // Viandes et volailles congelées
   ['Viandes et volailles congelées', 'Poulet entier congelé', 'pièce'],
   ['Viandes et volailles congelées', 'Poulet congelé (carton)', 'carton'],
-  ['Viandes et volailles congelées', 'Cuisse de poulet normal', 'kg'],
+  ['Viandes et volailles congelées', 'Cuisse de poulet normal', 'kg', '', 2100, ''],
   ['Viandes et volailles congelées', 'Ailes de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Dos de poulet', 'kg'],
   ['Viandes et volailles congelées', 'Gésiers de poulet', 'kg'],
@@ -356,7 +364,7 @@ var CATALOGUE = [
   ['Huiles et matières grasses', 'Margarine', 'boîte'],
   ['Huiles et matières grasses', 'Beurre', 'pièce'],
   // Épicerie et condiments
-  ['Épicerie et condiments', 'Sucre en kilo', 'kg'],
+  ['Épicerie et condiments', 'Sucre Delta en kilo', 'kg', 450, 600, 50],
   ['Épicerie et condiments', 'Sucre en morceaux (boîte)', 'boîte'],
   ['Épicerie et condiments', 'Sucre (sac 50 kg)', 'sac'],
   ['Épicerie et condiments', 'Sel fin', 'kg'],
@@ -442,7 +450,7 @@ var CATALOGUE = [
   ['Entretien, hygiène et insecticides', 'Lessive liquide', 'bouteille'],
   ['Entretien, hygiène et insecticides', 'Eau de Javel', 'bouteille'],
   ['Entretien, hygiène et insecticides', 'Liquide vaisselle', 'bouteille'],
-  ['Entretien, hygiène et insecticides', 'Papier hygiénique', 'rouleau'],
+  ['Entretien, hygiène et insecticides', 'Papier hygiénique', 'rouleau', 150, 200, 10],
   ['Entretien, hygiène et insecticides', 'Mouchoirs / serviettes', 'paquet'],
   ['Entretien, hygiène et insecticides', 'Dentifrice', 'tube'],
   ['Entretien, hygiène et insecticides', 'Brosse à dents', 'pièce'],
@@ -467,11 +475,62 @@ var CATALOGUE = [
   ['Emballages et consommables', 'Cure-dents', 'boîte'],
   ['Emballages et consommables', 'Charbon de bois', 'sac'],
   // Ajouts (produits au kilo achetés en sacs ou cartons)
-  ['Poissons congelés', 'Poisson sylvi petit calibre', 'kg'],
-  ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg'],
-  ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg'],
-  ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg'],
-  ['Viandes et volailles congelées', 'Pointe (bout d\'aile de poulet normal)', 'kg']
+  ['Poissons congelés', 'Poisson sylvi petit calibre', 'kg', '', 1300, ''],
+  ['Poissons congelés', 'Poisson sylvi moyen calibre', 'kg', '', 1600, ''],
+  ['Poissons congelés', 'Poisson sylvi gros calibre', 'kg', '', 1900, ''],
+  ['Viandes et volailles congelées', 'Cuisse de poulet rapide', 'kg', '', 1800, ''],
+  ['Viandes et volailles congelées', 'Pointe (bout d\'aile de poulet normal)', 'kg'],
+  // Articles du cahier « Point des achats » et des reçus
+  ['Conserves', 'Sardine Atlanta C50 (boîte)', 'boîte', 440, 550, ''],
+  ['Conserves', 'Sardine Bonne Journée (boîte)', 'boîte', 300, 400, ''],
+  ['Conserves', 'Sardine Casa (boîte)', 'boîte', 276, '', ''],
+  ['Conserves', 'Tomate Royale 210 g', 'boîte', 185.42, 250, 48],
+  ['Conserves', 'Tomate Grace 70 g', 'boîte', 84, 100, 50],
+  ['Conserves', 'Tomate Bonjour 400 g', 'boîte', 320.83, 500, 24],
+  ['Entretien, hygiène et insecticides', 'Softcare grand blanc', 'pièce', 47, 75, 50],
+  ['Entretien, hygiène et insecticides', 'Softcare chapelet (5C)', 'pièce', 100, 150, 10],
+  ['Entretien, hygiène et insecticides', 'Softcare adulte jaune', 'pièce', 450, '', ''],
+  ['Entretien, hygiène et insecticides', 'Omo Viva 170 g', 'sachet', 196.15, 225, 26],
+  ['Entretien, hygiène et insecticides', 'Omo Viva 80 g', 'sachet', 96, 125, 50],
+  ['Entretien, hygiène et insecticides', 'Omo Wawe 70 g', 'sachet', 94.12, 125, 51],
+  ['Entretien, hygiène et insecticides', 'Savon Palmida (vrai)', 'pièce', 150, 200, ''],
+  ['Entretien, hygiène et insecticides', 'Savon Crown (72C)', 'pièce', 550, 600, ''],
+  ['Entretien, hygiène et insecticides', 'Savon Kampé grand (unité)', 'pièce', '', 275, ''],
+  ['Entretien, hygiène et insecticides', 'Couche La Lune', 'pièce', 40, 50, 50],
+  ['Entretien, hygiène et insecticides', 'Papier à table Bella', 'pièce', 200, 250, ''],
+  ['Entretien, hygiène et insecticides', 'Papier Chérie (cartouche)', 'pièce', 70, 100, 10],
+  ['Entretien, hygiène et insecticides', 'Mosquito Super Kill', 'pièce', 170, '', ''],
+  ['Entretien, hygiène et insecticides', 'Pâte Charlie petit', 'pièce', 166.67, 200, 12],
+  ['Entretien, hygiène et insecticides', 'Pâte Charlie gros', 'pièce', '', 400, ''],
+  ['Entretien, hygiène et insecticides', 'Bougie 65C moyen (unité)', 'pièce', '', '', ''],
+  ['Entretien, hygiène et insecticides', 'Bougie 30C grande (unité)', 'pièce', '', '', ''],
+  ['Entretien, hygiène et insecticides', 'Allumette Roch (unité)', 'pièce', '', '', ''],
+  ['Pâtes et couscous', 'Spaghetti Doga', 'paquet', 320, 375, 20],
+  ['Pâtes et couscous', 'Spaghetti Matanti 500 g', 'paquet', 375, '', ''],
+  ['Pâtes et couscous', 'Spaghetti Bonjour 200 g', 'paquet', 150, 200, 40],
+  ['Pâtes et couscous', 'Spaghetti Bella 500 g', 'paquet', 310, 350, 20],
+  ['Pâtes et couscous', 'Coquillette Matanti 200 g', 'paquet', 187.5, 225, 40],
+  ['Pâtes et couscous', 'Coquillette Bonjour 200 g', 'paquet', 182.5, 200, 40],
+  ['Pâtes et couscous', 'Coquillette Bonjour 500 g', 'paquet', 335, 400, 20],
+  ['Pâtes et couscous', 'Indomie Suprême grand', 'paquet', 152.5, 225, 40],
+  ['Pâtes et couscous', 'Couscous Ginny 500 g', 'paquet', 450, 500, 20],
+  ['Pâtes et couscous', 'Couscous d\'Or', 'paquet', 435, '', 20],
+  ['Céréales, féculents et farines', 'Farine MOA en kilo', 'kg', 414, 500, 50],
+  ['Huiles et matières grasses', 'Beurre Ginny', 'pièce', 316.67, 400, 6],
+  ['Produits laitiers, œufs et boissons', 'Lait Peak vrai 160 g', 'sachet', 500, 600, 48],
+  ['Produits laitiers, œufs et boissons', 'Lait Cébon original', 'pièce', 937.5, 1100, ''],
+  ['Produits laitiers, œufs et boissons', 'Anutrilac (chapelet 10C)', 'pièce', 130, '', 10],
+  ['Produits laitiers, œufs et boissons', 'Nescafé sachet (15C)', 'sachet', 433, '', ''],
+  ['Produits laitiers, œufs et boissons', 'Cérélac sachet (8C chapelet)', 'sachet', '', '', ''],
+  ['Épicerie et condiments', 'Lipton thé (80C unité)', 'boîte', 400, '', ''],
+  ['Épicerie et condiments', 'Café Roche 50 g', 'pièce', 350, '', ''],
+  ['Épicerie et condiments', 'Levure instant Success', 'paquet', 1300, '', ''],
+  ['Épicerie et condiments', 'Mevia grand (unité)', 'pièce', 2417, 2600, ''],
+  ['Épicerie et condiments', 'Noix de muscade (chapelet)', 'pièce', 60, 100, 10],
+  ['Épicerie et condiments', 'Tiger', 'pièce', 110, 150, ''],
+  ['Emballages et consommables', 'Sac pour emballer', 'pièce', 100, '', ''],
+  ['Légumes et produits frais', 'Pommes frites Ritchi (carton)', 'carton', 14000, '', ''],
+  ['Poissons congelés', 'Maquereau Mauritanie MK 25+', 'kg', '', '', '']
 ];
 
 /**
@@ -494,7 +553,7 @@ var SCHEMA = {
     { key: 'prixAchat', label: "Prix d'achat de référence (FCFA)" },
     { key: 'prixVente', label: 'Prix de vente (FCFA)' },
     { key: 'seuil', label: "Seuil d'alerte stock" }, { key: 'actif', label: 'Actif (OUI/NON)' },
-    { key: 'kgSac', label: "Poids habituel d'un sac / carton (kg)" }
+    { key: 'kgSac', label: "Contenu d'un sac / carton (kg ou unités)" }
   ],
   Achats: [
     { key: 'id', label: 'ID' }, { key: 'date', label: 'Date', text: true },
@@ -502,7 +561,7 @@ var SCHEMA = {
     { key: 'qte', label: 'Quantité' }, { key: 'pu', label: "Prix d'achat unitaire (FCFA)" },
     { key: 'total', label: "Montant de l'achat (FCFA)", formula: '=[qte]*[pu]' },
     { key: 'fournisseur', label: 'Fournisseur' }, { key: 'note', label: 'Note' },
-    { key: 'nbSacs', label: 'Nombre de sacs / cartons' }, { key: 'kgSac', label: 'Kg par sac / carton' }
+    { key: 'nbSacs', label: 'Nombre de sacs / cartons' }, { key: 'kgSac', label: 'Contenu par sac / carton' }
   ],
   Ventes: [
     { key: 'id', label: 'ID' }, { key: 'date', label: 'Date', text: true },
@@ -513,7 +572,7 @@ var SCHEMA = {
     { key: 'cout', label: "Coût d'achat unitaire (FCFA)" },
     { key: 'marge', label: 'Bénéfice brut (FCFA)', formula: '=[qte]*([pu]-[cout])' },
     { key: 'paiement', label: 'Paiement' }, { key: 'note', label: 'Client / Note' },
-    { key: 'nbSacs', label: 'Nombre de sacs / cartons vendus' }, { key: 'kgSac', label: 'Kg par sac / carton' }
+    { key: 'nbSacs', label: 'Nombre de sacs / cartons vendus' }, { key: 'kgSac', label: 'Contenu par sac / carton' }
   ],
   Depenses: [
     { key: 'id', label: 'ID' }, { key: 'date', label: 'Date', text: true },
@@ -647,7 +706,7 @@ function addSale_(store, d) {
       var qte, pu, nbSacs = num_(l.nbSacs), kgSac = 0;
       if (nbSacs > 0) {
         kgSac = num_(l.kgSac) > 0 ? num_(l.kgSac) : p.kgSac;
-        if (!(kgSac > 0)) throw new Error('Indiquez le poids (kg) d\'un sac pour ' + p.nom + '.');
+        if (!(kgSac > 0)) throw new Error('Indiquez le contenu d\'un sac ou carton (kg ou unités) pour ' + p.nom + '.');
         qte = round_(nbSacs * kgSac, 3);
         pu = round_(num_(l.prixSac) / kgSac, 4);
         if (kgSac !== p.kgSac) kgUpdates[p.id] = kgSac;
@@ -671,15 +730,19 @@ function addSale_(store, d) {
 
 /**
  * Achat. Deux saisies possibles :
- *  - au poids : qte + (pu | montant)
- *  - par sacs / cartons : nbSacs + kgSac (+ prixKg via pu, | prixSac | montant).
- * La quantité enregistrée est toujours dans l'unité du produit (kg pour les produits au kilo).
+ *  - au poids / à l'unité : qte + (pu | montant)
+ *  - par sacs / cartons : nbSacs + kgSac (+ pu = prix par kg ou par unité | prixSac | montant).
+ * kgSac est le contenu d'un sac ou carton, exprimé dans l'unité du produit
+ * (kg pour un produit au kilo, nombre d'unités pour un produit vendu à la pièce).
+ * La quantité enregistrée est toujours dans l'unité du produit. nbSacs peut être
+ * fractionnaire (0,5 carton), comme sur les reçus des grossistes.
  */
-function addPurchase_(store, d) {
-  var date = validDate_(d.date), p = findProduct_(store, d.produitId);
+function preparePurchase_(products, d) {
+  var date = validDate_(d.date), p = products.filter(function (x) { return x.id === String(d.produitId); })[0];
+  if (!p) throw new Error('Produit introuvable : ' + d.produitId);
   var nbSacs = num_(d.nbSacs), kgSac = num_(d.kgSac), qte, montant = num_(d.montant), pu = num_(d.pu);
   if (nbSacs > 0) {
-    if (!(kgSac > 0)) throw new Error('Indiquez le poids (kg) d\'un sac ou carton.');
+    if (!(kgSac > 0)) throw new Error('Indiquez le contenu d\'un sac ou carton (kg ou unités).');
     qte = round_(nbSacs * kgSac, 3);
     if (num_(d.prixSac) > 0) pu = num_(d.prixSac) / kgSac;
   } else { nbSacs = 0; kgSac = 0; qte = num_(d.qte); }
@@ -687,18 +750,51 @@ function addPurchase_(store, d) {
   if (montant > 0) pu = montant / qte;
   pu = round_(pu, 4);
   if (!(pu > 0)) throw new Error("Indiquez le prix d'achat.");
+  var rec = {
+    id: uid_('A'), date: date, produitId: p.id, produit: p.nom, qte: qte, pu: pu, total: round_(qte * pu, 0),
+    fournisseur: String(d.fournisseur || ''), note: String(d.note || ''),
+    nbSacs: nbSacs || '', kgSac: kgSac || ''
+  };
+  var patch = { prixAchat: pu };
+  if (kgSac > 0) patch.kgSac = kgSac;
+  if (num_(d.prixVente) > 0) patch.prixVente = num_(d.prixVente);
+  return { rec: rec, patch: patch, produitId: p.id };
+}
+
+function addPurchase_(store, d) {
   return store.lock(function () {
-    var rec = {
-      id: uid_('A'), date: date, produitId: p.id, produit: p.nom, qte: qte, pu: pu, total: round_(qte * pu, 0),
-      fournisseur: String(d.fournisseur || ''), note: String(d.note || ''),
-      nbSacs: nbSacs || '', kgSac: kgSac || ''
-    };
-    store.append('Achats', rec);
-    var patch = { prixAchat: pu };
-    if (kgSac > 0) patch.kgSac = kgSac;
-    if (num_(d.prixVente) > 0) patch.prixVente = num_(d.prixVente);
-    store.update('Produits', p.id, patch);
-    return rec;
+    var x = preparePurchase_(listProducts_(store), d);
+    store.append('Achats', x.rec);
+    store.update('Produits', x.produitId, x.patch);
+    return x.rec;
+  });
+}
+
+/**
+ * Bon d'achat : plusieurs lignes enregistrées ensemble (tout ou rien).
+ * d = { date, fournisseur, lines: [ { produitId, nbSacs, kgSac, prixSac | pu | montant } ] }
+ */
+function addPurchases_(store, d) {
+  var lines = d.lines || [];
+  if (!lines.length) throw new Error('Le bon d\'achat est vide.');
+  return store.lock(function () {
+    var products = listProducts_(store), prepared = [];
+    lines.forEach(function (l, i) {
+      var name = '';
+      try {
+        var x = preparePurchase_(products, { date: d.date, fournisseur: d.fournisseur, note: d.note, produitId: l.produitId,
+          nbSacs: l.nbSacs, kgSac: l.kgSac, qte: l.qte, pu: l.pu, prixSac: l.prixSac, montant: l.montant, prixVente: l.prixVente });
+        x.rec.id = x.rec.id + '-' + (i + 1);
+        prepared.push(x);
+      } catch (e) {
+        products.forEach(function (p) { if (p.id === String(l.produitId)) name = ' (' + p.nom + ')'; });
+        throw new Error('Ligne ' + (i + 1) + name + ' : ' + e.message);
+      }
+    });
+    var total = 0, patches = {};
+    prepared.forEach(function (x) { store.append('Achats', x.rec); total += x.rec.total; patches[x.produitId] = x.patch; });
+    Object.keys(patches).forEach(function (id) { store.update('Produits', id, patches[id]); });
+    return { lignes: prepared.length, total: round_(total, 0) };
   });
 }
 
@@ -816,6 +912,7 @@ function dispatch_(store, action, a) {
     case 'saveProduct': return saveProduct_(store, a);
     case 'addSale': return addSale_(store, a);
     case 'addPurchase': return addPurchase_(store, a);
+    case 'addPurchases': return addPurchases_(store, a);
     case 'addExpense': return addExpense_(store, a);
     case 'addLoss': return addLoss_(store, a);
     case 'remove': return removeRecord_(store, a.table, a.id);
@@ -844,7 +941,7 @@ MemoryStore_.prototype.update = function (t, id, patch) {
 };
 MemoryStore_.prototype.lock = function (fn) { return fn(); };
 function seedProducts_() {
-  return CATALOGUE.map(function (r, i) { return { id: 'P' + ('000' + (i + 1)).slice(-4), categorie: r[0], nom: r[1], unite: r[2], prixAchat: '', prixVente: '', seuil: '', actif: 'OUI' }; });
+  return CATALOGUE.map(function (r, i) { return { id: 'P' + ('000' + (i + 1)).slice(-4), categorie: r[0], nom: r[1], unite: r[2], prixAchat: r[3] || '', prixVente: r[4] || '', seuil: '', actif: 'OUI', kgSac: r[5] || '' }; });
 }
 
 
@@ -1147,11 +1244,11 @@ function drawCart() {
   bar.innerHTML = '<span>🛒 ' + t.n + ' article' + (t.n > 1 ? 's' : '') + '</span><span>' + money(t.total) + '</span>';
   c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><h2>Panier</h2>' + (window.innerWidth <= 900 ? '<button class="btn sm ghost" id="cclose">Fermer ✕</button>' : '') + '</div>' +
     (S.cart.length ? '<div class="hint">Quantité et prix modifiables</div>' + S.cart.map(function (l) {
-      var p = prodById(l.id), sac = l.mode === 'sac', canSac = p.unite === 'kg' || p.kgSac > 0;
-      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + (sac ? 'sac(s) · prix du sac' : esc(p.unite) + ' · prix unitaire') + '</div></div>' +
+      var p = prodById(l.id), pw = packWords(p), sac = l.mode === 'sac', canSac = p.unite === 'kg' || p.kgSac > 0;
+      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + (sac ? pw.pack + '(s) · prix du ' + pw.pack : esc(p.unite) + ' · prix unitaire') + '</div></div>' +
         '<input class="qt" type="number" inputmode="decimal" step="any" min="0" value="' + l.qte + '" aria-label="Quantité"><input class="pu" type="number" inputmode="decimal" step="any" min="0" value="' + l.pu + '" aria-label="Prix unitaire"><button class="x" aria-label="Retirer">×</button>' +
-        (canSac ? '<div class="sacrow"><button class="chip sm' + (!sac ? ' on' : '') + '" data-m="kg">Au kilo</button><button class="chip sm' + (sac ? ' on' : '') + '" data-m="sac">Au sac</button>' +
-          (sac ? '<label>Poids du sac (kg)<input class="kg" type="number" inputmode="decimal" step="any" min="0" value="' + (l.kgSac || '') + '" placeholder="à saisir"></label>' + (parseFloat(l.kgSac) ? '<span class="eq">= ' + qty(l.qte * l.kgSac) + ' kg</span>' : '') : '') + '</div>' : '') + '</div>';
+        (canSac ? '<div class="sacrow"><button class="chip sm' + (!sac ? ' on' : '') + '" data-m="kg">' + (pw.kg ? 'Au kilo' : 'À l\'unité') + '</button><button class="chip sm' + (sac ? ' on' : '') + '" data-m="sac">Au ' + pw.pack + '</button>' +
+          (sac ? '<label>' + (pw.kg ? 'Poids du sac (kg)' : 'Contenu du carton') + '<input class="kg" type="number" inputmode="decimal" step="any" min="0" value="' + (l.kgSac || '') + '" placeholder="à saisir"></label>' + (parseFloat(l.kgSac) ? '<span class="eq">= ' + qty(l.qte * l.kgSac) + ' ' + esc(p.unite) + '</span>' : '') : '') + '</div>' : '') + '</div>';
     }).join('') +
     '<div class="chips" style="margin-top:12px">' + S.data.paiements.map(function (p) { return '<button class="chip' + (S.pay === p ? ' on' : '') + '" data-p="' + esc(p) + '">' + esc(p) + '</button>'; }).join('') + '</div>' +
     '<input id="cnote" placeholder="Client / note (facultatif)" value="' + esc(S.note) + '">' +
@@ -1163,11 +1260,11 @@ function drawCart() {
   var cc = $('#cclose', c); if (cc) cc.onclick = function () { S.cartOpen = false; drawCart(); };
   $$('.line', c).forEach(function (row) {
     var l = S.cart.filter(function (x) { return x.id === row.dataset.id; })[0];
-    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; var eq = $('.eq', row); if (eq && l.kgSac) eq.textContent = '= ' + qty(l.qte * l.kgSac) + ' kg'; softTotals(); };
+    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; var eq = $('.eq', row); if (eq && l.kgSac) eq.textContent = '= ' + qty(l.qte * l.kgSac) + ' ' + prodById(l.id).unite; softTotals(); };
     $('.pu', row).oninput = function (e) { l.pu = parseFloat(String(e.target.value).replace(',', '.')) || 0; l.priceTouched = true; softTotals(); };
     $('.x', row).onclick = function () { S.cart = S.cart.filter(function (x) { return x !== l; }); drawCart(); };
     $$('[data-m]', row).forEach(function (b) { b.onclick = function () { if (l.mode !== b.dataset.m) { setLineMode(l, b.dataset.m); drawCart(); } }; });
-    var kg = $('.kg', row); if (kg) kg.oninput = function (e) { l.kgSac = parseFloat(String(e.target.value).replace(',', '.')) || ''; var p = prodById(l.id); if (p.prixVente && l.kgSac && !l.priceTouched) { l.pu = Math.round(p.prixVente * l.kgSac); $('.pu', row).value = l.pu; } var eq = $('.eq', row); if (eq) eq.textContent = l.kgSac ? '= ' + qty(l.qte * l.kgSac) + ' kg' : ''; softTotals(); };
+    var kg = $('.kg', row); if (kg) kg.oninput = function (e) { l.kgSac = parseFloat(String(e.target.value).replace(',', '.')) || ''; var p = prodById(l.id); if (p.prixVente && l.kgSac && !l.priceTouched) { l.pu = Math.round(p.prixVente * l.kgSac); $('.pu', row).value = l.pu; } var eq = $('.eq', row); if (eq) eq.textContent = l.kgSac ? '= ' + qty(l.qte * l.kgSac) + ' ' + p.unite : ''; softTotals(); };
   });
   $$('[data-p]', c).forEach(function (b) { b.onclick = function () { S.pay = b.dataset.p; drawCart(); }; });
   var cn = $('#cnote', c); if (cn) cn.oninput = function (e) { S.note = e.target.value; };
@@ -1175,7 +1272,7 @@ function drawCart() {
   var cs = $('#csave', c); if (cs) cs.onclick = function () {
     if (S.cart.some(function (l) { return !(l.qte > 0); })) return toast('Vérifiez les quantités du panier.', true);
     var nosac = S.cart.filter(function (l) { return l.mode === 'sac' && !(parseFloat(l.kgSac) > 0); })[0];
-    if (nosac) return toast('Indiquez le poids du sac (kg) pour ' + prodById(nosac.id).nom + '.', true);
+    if (nosac) return toast('Indiquez le contenu du ' + packWords(prodById(nosac.id)).pack + ' pour ' + prodById(nosac.id).nom + '.', true);
     if (S.cart.some(function (l) { return !(l.pu > 0); }) && !confirm('Un article a un prix à 0 FCFA. Enregistrer quand même ?')) return;
     busy(cs, function () {
       return api('addSale', { date: S.saleDate, paiement: S.pay, note: S.note, lines: S.cart.map(function (l) { return l.mode === 'sac' ? { produitId: l.id, nbSacs: l.qte, kgSac: l.kgSac, prixSac: l.pu } : { produitId: l.id, qte: l.qte, pu: l.pu }; }) }).then(function (r) {
@@ -1201,10 +1298,130 @@ function productOptions(selected, q) {
     return '<optgroup label="' + esc(c) + '">' + byCat[c].map(function (p) { return '<option value="' + p.id + '"' + (p.id === selected ? ' selected' : '') + '>' + esc(p.nom) + ' (' + esc(p.unite) + ')</option>'; }).join('') + '</optgroup>';
   }).join('');
 }
-function vBuy(w) {
-  var mode = 'sacs', basis = 'kg';   // mode : sacs | poids ; basis : kg | sac | total (sacs) ou unit | total (poids)
-  w.innerHTML = head('Achats / Approvisionnement', 'Enregistrez chaque achat : le stock et le coût moyen se mettent à jour') +
-    '<div class="grid two"><div class="card"><h2>Nouvel achat</h2>' +
+var BUY = { kind: 'bon', bon: null };
+var nf2 = new Intl.NumberFormat('fr-FR', { maximumFractionDigits: 2 });
+function num(v) { return parseFloat(String(v == null ? '' : v).replace(/\s/g, '').replace(',', '.')) || 0; }
+function newBonLine() { return { name: '', nb: '', ct: '', prix: '', basis: 'carton' }; }
+function buyTabs() {
+  return '<div class="chips"><button class="chip' + (BUY.kind === 'bon' ? ' on' : '') + '" data-k="bon">Bon d\'achat (plusieurs articles)</button>' +
+    '<button class="chip' + (BUY.kind === 'simple' ? ' on' : '') + '" data-k="simple">Achat simple</button></div>';
+}
+function bindBuyTabs(w) { $$('[data-k]', w).forEach(function (b) { b.onclick = function () { BUY.kind = b.dataset.k; vBuy(w); }; }); }
+function vBuy(w) { if (BUY.kind === 'bon') vBuyBon(w); else vBuySimple(w); }
+/** Libellés selon l'unité du produit : kg => sac et poids ; sinon carton et nombre d'unités. */
+function packWords(p) {
+  var kg = !p || p.unite === 'kg', u = p ? p.unite : 'kg';
+  return { kg: kg, unit: u, pack: kg ? 'sac' : 'carton', nb: kg ? 'Nombre de sacs / cartons' : 'Nombre de cartons',
+    content: kg ? 'Poids d\'un sac (kg)' : 'Contenu d\'un carton (' + u + ')', each: kg ? 'au kilo' : 'à l\'unité (' + u + ')' };
+}
+function recentPurchases() {
+  return api('history', { table: 'Achats', from: addDays(today(), -29), to: today() }).then(function (rows) {
+    var sups = {}; rows.forEach(function (r) { if (r.fournisseur) sups[r.fournisseur] = 1; });
+    var dl = $('#sups'); if (dl) dl.innerHTML = Object.keys(sups).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
+    var el = $('#blist'); if (!el) return;
+    el.innerHTML = rows.length ? '<table><thead><tr><th>Date</th><th>Produit</th><th class="n">Qté</th><th class="n">PU achat</th><th class="n">Total</th><th class="n">Bénéf. prévu</th></tr></thead><tbody>' +
+      rows.slice(0, 40).map(function (r) {
+        var p = prodById(r.produitId), pv = p ? p.prixVente : 0;
+        return '<tr><td>' + frShort(r.date) + '</td><td>' + esc(r.produit) + '<div style="font-size:12px;color:var(--muted)">' + (r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) : '') + (r.fournisseur ? (r.nbSacs ? ' · ' : '') + esc(r.fournisseur) : '') + '</div></td><td class="n">' + qty(r.qte) + '</td><td class="n">' + nf2.format(r.pu) + '</td><td class="n"><b>' + nf.format(r.qte * r.pu) + '</b></td><td class="n">' + (pv > 0 ? nf.format((pv - r.pu) * r.qte) : '—') + '</td></tr>';
+      }).join('') + '</tbody></table>' : '<div class="empty">Aucun achat sur 30 jours.</div>';
+  }).catch(function (e) { var el = $('#blist'); if (el) el.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+}
+
+/* ----- Bon d'achat : recopier un reçu de grossiste ligne par ligne ----- */
+function bonCalc(l) {
+  var p = S.data.produits.filter(function (x) { return x.actif && norm(x.nom) === norm(l.name); })[0];
+  var nb = num(l.nb), ct = num(l.ct), pr = num(l.prix), r = { p: p, nb: nb, ct: ct, qte: 0, pu: 0, montant: 0, ok: false, msg: '' };
+  if (!String(l.name).trim() && !nb && !pr) { r.empty = true; return r; }
+  if (!p) { r.msg = 'Produit non reconnu : choisissez-le dans la liste proposée.'; return r; }
+  r.qte = ct > 0 ? nb * ct : nb;
+  if (l.basis === 'carton') { if (!(ct > 0)) { r.msg = 'Indiquez le contenu d\'un ' + packWords(p).pack + ' ou carton.'; return r; } r.pu = pr / ct; }
+  else if (l.basis === 'unite') r.pu = pr;
+  else r.pu = r.qte ? pr / r.qte : 0;
+  r.montant = r.qte * r.pu; r.ok = nb > 0 && r.pu > 0;
+  if (!r.ok) r.msg = 'Indiquez la quantité et le prix.';
+  return r;
+}
+function bonLineSummary(l) {
+  var r = bonCalc(l); if (r.empty) return '';
+  if (!r.ok) return '<span style="color:var(--bad)">' + esc(r.msg) + '</span>';
+  var u = r.p.unite, pv = r.p.prixVente;
+  return '= <b>' + qty(r.qte) + ' ' + esc(u) + '</b> · ' + nf2.format(r.pu) + ' F / ' + esc(u) + ' · <b>' + money(r.montant) + '</b>' +
+    (pv > 0 ? ' · vente ' + nf.format(pv) + ' F → bénéfice prévu <b style="color:' + (pv >= r.pu ? 'var(--ok)' : 'var(--bad)') + '">' + money((pv - r.pu) * r.qte) + '</b>' : ' · <span style="color:var(--warn)">prix de vente non renseigné</span>');
+}
+function bonTotal() { var t = 0; S.bon.lines.forEach(function (l) { var r = bonCalc(l); if (r.ok) t += r.montant; }); return t; }
+function drawBonLines() {
+  var box = $('#bl'); if (!box) return;
+  box.innerHTML = S.bon.lines.map(function (l, i) {
+    return '<div class="bline" data-i="' + i + '"><div class="brow1"><input class="bn-name" list="plist" placeholder="Produit (tapez pour chercher)" value="' + esc(l.name) + '" autocomplete="off"><button class="x" aria-label="Retirer la ligne">×</button></div>' +
+      '<div class="brow2"><label>Qté<input class="bn-nb" type="text" inputmode="decimal" placeholder="ex : 0,5" value="' + esc(l.nb) + '"></label>' +
+      '<label>Contenu / carton<input class="bn-ct" type="text" inputmode="decimal" placeholder="kg ou unités" value="' + esc(l.ct) + '"></label>' +
+      '<label>Prix<input class="bn-prix" type="text" inputmode="decimal" value="' + esc(l.prix) + '"></label>' +
+      '<label>Prix indiqué<select class="bn-basis"><option value="carton"' + (l.basis === 'carton' ? ' selected' : '') + '>par carton</option><option value="unite"' + (l.basis === 'unite' ? ' selected' : '') + '>par unité/kg</option><option value="total"' + (l.basis === 'total' ? ' selected' : '') + '>total ligne</option></select></label></div>' +
+      '<div class="bsum" id="bs' + i + '">' + bonLineSummary(l) + '</div></div>';
+  }).join('');
+  var t = $('#btotbon'); if (t) t.textContent = money(bonTotal());
+}
+function vBuyBon(w) {
+  if (!S.bon) S.bon = { date: today(), fournisseur: '', lines: [newBonLine(), newBonLine(), newBonLine()] };
+  var B = S.bon;
+  w.innerHTML = head('Achats / Approvisionnement', 'Recopiez votre reçu : quantité, contenu du carton et prix, comme sur la facture du grossiste') + buyTabs() +
+    '<div class="grid two" style="margin-top:10px"><div class="card"><h2>Bon d\'achat</h2><div class="hint">Une ligne par article. La quantité peut être fractionnée (0,5 carton) comme sur les reçus.</div>' +
+    '<div class="row"><label class="f"><span>Date</span>' + dateInput('bd', B.date) + '</label><label class="f"><span>Fournisseur</span><input id="bsup" list="sups" placeholder="Nom du grossiste" value="' + esc(B.fournisseur) + '"><datalist id="sups"></datalist></label></div>' +
+    '<datalist id="plist">' + S.data.produits.filter(function (p) { return p.actif; }).map(function (p) { return '<option value="' + esc(p.nom) + '">'; }).join('') + '</datalist>' +
+    '<div id="bl"></div><button class="btn sec" id="badd" style="margin:8px 0 4px">+ Ajouter une ligne</button>' +
+    '<div class="tot"><span>Total du bon</span><span id="btotbon">0 FCFA</span></div>' +
+    '<button class="btn big" id="bsavebon" style="margin-top:12px">Enregistrer le bon d\'achat</button></div>' +
+    '<div class="card"><h2>Derniers achats</h2><div class="hint">30 derniers jours · bénéfice prévu au prix de vente actuel</div><div id="blist" class="scroll"><div class="skel"></div></div></div></div>';
+  bindBuyTabs(w); drawBonLines();
+  $('#bd').onchange = function () { B.date = this.value || today(); };
+  $('#bsup').oninput = function () { B.fournisseur = this.value; };
+  $('#badd').onclick = function () { B.lines.push(newBonLine()); drawBonLines(); var n = $$('.bn-name'); n[n.length - 1].focus(); };
+  var box = $('#bl');
+  function lineOf(e) { var el = e.target.closest('.bline'); return el ? { el: el, i: +el.dataset.i } : null; }
+  box.addEventListener('input', function (e) {
+    var o = lineOf(e); if (!o) return; var l = B.lines[o.i], c = e.target.classList;
+    if (c.contains('bn-name')) l.name = e.target.value; else if (c.contains('bn-nb')) l.nb = e.target.value; else if (c.contains('bn-ct')) l.ct = e.target.value; else if (c.contains('bn-prix')) l.prix = e.target.value;
+    $('#bs' + o.i).innerHTML = bonLineSummary(l); $('#btotbon').textContent = money(bonTotal());
+  });
+  box.addEventListener('change', function (e) {
+    var o = lineOf(e); if (!o) return; var l = B.lines[o.i];
+    if (e.target.classList.contains('bn-basis')) l.basis = e.target.value;
+    if (e.target.classList.contains('bn-name')) {
+      var r = bonCalc(l); if (r.p && !num(l.ct) && r.p.kgSac > 0) { l.ct = String(r.p.kgSac); $('.bn-ct', o.el).value = l.ct; }
+      if (r.p) e.target.title = 'Dernier prix d\'achat : ' + nf2.format(r.p.prixAchat) + ' F / ' + r.p.unite;
+    }
+    $('#bs' + o.i).innerHTML = bonLineSummary(l); $('#btotbon').textContent = money(bonTotal());
+  });
+  box.addEventListener('click', function (e) {
+    if (!e.target.classList.contains('x')) return; var o = lineOf(e); if (!o) return;
+    B.lines.splice(o.i, 1); if (!B.lines.length) B.lines.push(newBonLine()); drawBonLines();
+  });
+  $('#bsavebon').onclick = function () {
+    var out = [], err = '';
+    B.lines.forEach(function (l, i) {
+      var r = bonCalc(l); if (r.empty || err) return;
+      if (!r.ok) { err = 'Ligne ' + (i + 1) + ' : ' + r.msg; return; }
+      var o = { produitId: r.p.id };
+      if (r.ct > 0) { o.nbSacs = r.nb; o.kgSac = r.ct; } else { o.qte = r.nb; }
+      if (l.basis === 'carton') o.prixSac = num(l.prix); else if (l.basis === 'unite') o.pu = num(l.prix); else o.montant = num(l.prix);
+      out.push(o);
+    });
+    if (err) return toast(err, true);
+    if (!out.length) return toast('Ajoutez au moins une ligne.', true);
+    busy($('#bsavebon'), function () {
+      return api('addPurchases', { date: B.date, fournisseur: B.fournisseur, lines: out }).then(function (r) {
+        S.bon = null; toast('✅ Bon d\'achat enregistré : ' + r.lignes + ' ligne(s), ' + money(r.total)); return refresh();
+      });
+    });
+  };
+  recentPurchases();
+}
+
+/* ----- Achat simple (un article) ----- */
+function vBuySimple(w) {
+  var mode = 'sacs', basis = 'unit';   // sacs : unit | pack | total ; poids : unit | total
+  w.innerHTML = head('Achats / Approvisionnement', 'Enregistrez chaque achat : le stock et le coût moyen se mettent à jour') + buyTabs() +
+    '<div class="grid two" style="margin-top:10px"><div class="card"><h2>Achat d\'un article</h2>' +
     '<label class="f"><span>Produit</span><input id="bq" placeholder="Filtrer la liste…" style="margin-bottom:6px"><select id="bp">' + productOptions('') + '</select></label>' +
     '<label class="f"><span>Date</span>' + dateInput('bd', today()) + '</label>' +
     '<div class="chips"><button class="chip on" id="mm1">Par sacs / cartons</button><button class="chip" id="mm2">Au poids / à l\'unité</button></div>' +
@@ -1213,52 +1430,53 @@ function vBuy(w) {
     '<label class="f"><span>Fournisseur</span><input id="bsup" list="sups" placeholder="Nom du fournisseur"><datalist id="sups"></datalist></label>' +
     '<div class="card" style="background:var(--brand-soft);box-shadow:none;margin:6px 0 10px" id="bsum"></div>' +
     '<button class="btn big" id="bsave">Enregistrer l\'achat</button></div>' +
-    '<div class="card"><h2>Derniers achats</h2><div class="hint">30 derniers jours</div><div id="blist" class="scroll"><div class="skel"></div></div></div></div>';
+    '<div class="card"><h2>Derniers achats</h2><div class="hint">30 derniers jours · bénéfice prévu au prix de vente actuel</div><div id="blist" class="scroll"><div class="skel"></div></div></div></div>';
+  bindBuyTabs(w);
   var kgPref = '';
+  function curP() { var e = $('#bp'); return e ? prodById(e.value) : null; }
   function formHtml() {
+    var pw = packWords(curP());
     if (mode === 'sacs') {
-      return '<div class="row"><label class="f"><span>Nombre de sacs / cartons</span><input id="bn" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 10"></label>' +
-        '<label class="f"><span>Poids d\'un sac (kg)</span><input id="bk" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 25" value="' + kgPref + '"></label></div>' +
-        '<div class="chips"><button class="chip' + (basis === 'kg' ? ' on' : '') + '" data-b="kg">Prix au kilo</button><button class="chip' + (basis === 'sac' ? ' on' : '') + '" data-b="sac">Prix du sac</button><button class="chip' + (basis === 'total' ? ' on' : '') + '" data-b="total">Total payé</button></div>' +
-        '<label class="f"><span>' + ({ kg: 'Prix d\'achat au kilo (FCFA)', sac: 'Prix d\'un sac (FCFA)', total: 'Montant total payé (FCFA)' }[basis]) + '</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>';
+      return '<div class="row"><label class="f"><span>' + pw.nb + '</span><input id="bn" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 10 ou 0,5"></label>' +
+        '<label class="f"><span>' + pw.content + '</span><input id="bk" type="number" inputmode="decimal" step="any" min="0" placeholder="ex : 25" value="' + kgPref + '"></label></div>' +
+        '<div class="chips"><button class="chip' + (basis === 'unit' ? ' on' : '') + '" data-b="unit">Prix ' + pw.each + '</button><button class="chip' + (basis === 'pack' ? ' on' : '') + '" data-b="pack">Prix du ' + pw.pack + '</button><button class="chip' + (basis === 'total' ? ' on' : '') + '" data-b="total">Total payé</button></div>' +
+        '<label class="f"><span>' + ({ unit: 'Prix d\'achat ' + pw.each + ' (FCFA)', pack: 'Prix d\'un ' + pw.pack + ' (FCFA)', total: 'Montant total payé (FCFA)' }[basis]) + '</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>';
     }
     return '<label class="f"><span>Quantité achetée</span><input id="bqty" type="number" inputmode="decimal" step="any" min="0"></label>' +
       '<div class="chips"><button class="chip' + (basis === 'unit' ? ' on' : '') + '" data-b="unit">Prix unitaire</button><button class="chip' + (basis === 'total' ? ' on' : '') + '" data-b="total">Total payé</button></div>' +
       '<label class="f"><span>' + (basis === 'unit' ? 'Prix d\'achat unitaire (FCFA)' : 'Montant total payé (FCFA)') + '</span><input id="bpu" type="number" inputmode="decimal" step="any" min="0"></label>';
   }
+  function readRaw() { var o = {}; $$('#bform input').forEach(function (i) { o[i.id] = i.value; }); return o; }
+  function restore(o) { Object.keys(o).forEach(function (k) { var e = $('#' + k); if (e && k !== 'bpu') e.value = o[k]; }); }
   function bindForm() {
     $('#bform').innerHTML = formHtml();
     $$('#bform [data-b]').forEach(function (b) { b.onclick = function () { var keep = readRaw(); basis = b.dataset.b; bindForm(); restore(keep); calc(); }; });
     $$('#bform input').forEach(function (i) { i.oninput = calc; });
     calc();
   }
-  function readRaw() { var o = {}; $$('#bform input').forEach(function (i) { o[i.id] = i.value; }); return o; }
-  function restore(o) { Object.keys(o).forEach(function (k) { var e = $('#' + k); if (e && k !== 'bpu') e.value = o[k]; }); }
-  function val(id) { var e = $('#' + id); return e ? (parseFloat(String(e.value).replace(',', '.')) || 0) : 0; }
+  function val(id) { var e = $('#' + id); return e ? num(e.value) : 0; }
   function parts() {
-    var p = prodById($('#bp').value), v = val('bpu'), out = { p: p, qte: 0, pu: 0, montant: 0, nb: 0, kg: 0 };
+    var p = curP(), v = val('bpu'), out = { p: p, qte: 0, pu: 0, montant: 0, nb: 0, kg: 0 };
     if (mode === 'sacs') {
       out.nb = val('bn'); out.kg = val('bk'); out.qte = out.nb * out.kg;
-      if (basis === 'kg') out.pu = v; else if (basis === 'sac') out.pu = out.kg ? v / out.kg : 0; else out.pu = out.qte ? v / out.qte : 0;
-    } else {
-      out.qte = val('bqty'); out.pu = basis === 'unit' ? v : (out.qte ? v / out.qte : 0);
-    }
+      if (basis === 'unit') out.pu = v; else if (basis === 'pack') out.pu = out.kg ? v / out.kg : 0; else out.pu = out.qte ? v / out.qte : 0;
+    } else { out.qte = val('bqty'); out.pu = basis === 'unit' ? v : (out.qte ? v / out.qte : 0); }
     out.montant = out.qte * out.pu; out.raw = v;
     return out;
   }
   function calc() {
-    var x = parts(), u = x.p ? x.p.unite : 'unité', sell = val('bsell') || (x.p ? x.p.prixVente : 0), h = '';
-    if (mode === 'sacs') h += '<div class="sub2"><span>Poids total acheté</span><b>' + qty(x.qte) + ' kg' + (x.nb ? ' (' + qty(x.nb) + ' × ' + qty(x.kg) + ' kg)' : '') + '</b></div>';
-    else h += '<div class="sub2"><span>Quantité achetée</span><b>' + qty(x.qte) + ' ' + esc(u) + '</b></div>';
-    h += '<div class="sub2"><span>Prix d\'achat ' + (mode === 'sacs' ? 'au kilo' : 'unitaire') + '</span><b>' + money(x.pu) + '</b></div>';
-    if (mode === 'sacs' && x.kg && x.pu) h += '<div class="sub2"><span>Prix d\'un sac</span><b>' + money(x.pu * x.kg) + '</b></div>';
+    var x = parts(), pw = packWords(x.p), u = pw.unit, sell = val('bsell') || (x.p ? x.p.prixVente : 0), h = '';
+    h += '<div class="sub2"><span>Quantité totale achetée</span><b>' + qty(x.qte) + ' ' + esc(u) + (mode === 'sacs' && x.nb ? ' (' + qty(x.nb) + ' × ' + qty(x.kg) + ')' : '') + '</b></div>';
+    h += '<div class="sub2"><span>Prix d\'achat par ' + (pw.kg ? 'kilo' : esc(u)) + '</span><b>' + nf2.format(x.pu) + ' FCFA</b></div>';
+    if (mode === 'sacs' && x.kg && x.pu) h += '<div class="sub2"><span>Prix d\'un ' + pw.pack + '</span><b>' + money(x.pu * x.kg) + '</b></div>';
     h += '<div class="tot" style="font-size:18px"><span>Montant de l\'achat</span><span>' + money(x.montant) + '</span></div>';
-    if (x.pu && sell) h += '<div class="sub2" style="margin-top:6px"><span>Marge théorique par ' + (mode === 'sacs' ? 'kilo' : 'unité') + '</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money(sell - x.pu) + ' (' + Math.round((sell - x.pu) / sell * 100) + ' %)</b></div>';
+    if (x.pu && sell) h += '<div class="sub2" style="margin-top:6px"><span>Marge théorique par ' + (pw.kg ? 'kilo' : esc(u)) + '</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + nf2.format(sell - x.pu) + ' FCFA (' + Math.round((sell - x.pu) / sell * 100) + ' %)</b></div>' +
+      '<div class="sub2"><span>Bénéfice prévu sur cet achat</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money((sell - x.pu) * x.qte) + '</b></div>';
     $('#bsum').innerHTML = h;
     return x;
   }
   function setMode(m) {
-    mode = m; basis = m === 'sacs' ? 'kg' : 'unit';
+    mode = m; basis = 'unit';
     $('#mm1').classList.toggle('on', m === 'sacs'); $('#mm2').classList.toggle('on', m === 'poids');
     bindForm();
   }
@@ -1268,31 +1486,27 @@ function vBuy(w) {
     var p = prodById(this.value); if (!p) return;
     kgPref = p.kgSac || '';
     if (p.kgSac > 0 && mode !== 'sacs') { setMode('sacs'); }
-    else if (mode === 'sacs') { var k = $('#bk'); if (k && !k.value && kgPref) k.value = kgPref; }
-    var pu = $('#bpu'); if (pu && !pu.value && p.prixAchat && ((mode === 'sacs' && basis === 'kg') || (mode === 'poids' && basis === 'unit'))) pu.value = p.prixAchat;
+    else { var keep = readRaw(); bindForm(); restore(keep); }
+    var k = $('#bk'); if (k && !k.value && kgPref) k.value = kgPref;
+    var pu = $('#bpu'); if (pu && !pu.value && p.prixAchat && basis === 'unit') pu.value = p.prixAchat;
     calc();
   };
   $('#bq').oninput = function () { var sel = $('#bp'); sel.innerHTML = productOptions(sel.value, this.value); };
   $('#bsave').onclick = function () {
-    var x = calc();
+    var x = calc(), pw = packWords(x.p);
     if (!x.p) return toast('Choisissez un produit.', true);
     if (mode === 'sacs') {
-      if (!(x.nb > 0)) return toast('Indiquez le nombre de sacs ou cartons.', true);
-      if (!(x.kg > 0)) return toast('Indiquez le poids (kg) d\'un sac.', true);
+      if (!(x.nb > 0)) return toast('Indiquez le nombre de ' + pw.pack + 's.', true);
+      if (!(x.kg > 0)) return toast('Indiquez le contenu d\'un ' + pw.pack + ' (' + (pw.kg ? 'kg' : pw.unit) + ').', true);
     } else if (!(x.qte > 0)) return toast('Indiquez la quantité achetée.', true);
     if (!(x.pu > 0)) return toast('Indiquez le prix d\'achat.', true);
     var a = { date: $('#bd').value, produitId: x.p.id, prixVente: $('#bsell').value, fournisseur: $('#bsup').value };
-    if (mode === 'sacs') { a.nbSacs = x.nb; a.kgSac = x.kg; if (basis === 'kg') a.pu = x.raw; else if (basis === 'sac') a.prixSac = x.raw; else a.montant = x.raw; }
+    if (mode === 'sacs') { a.nbSacs = x.nb; a.kgSac = x.kg; if (basis === 'unit') a.pu = x.raw; else if (basis === 'pack') a.prixSac = x.raw; else a.montant = x.raw; }
     else { a.qte = x.qte; if (basis === 'unit') a.pu = x.raw; else a.montant = x.raw; }
-    busy($('#bsave'), function () { return api('addPurchase', a).then(function () { toast('✅ Achat enregistré : ' + (mode === 'sacs' ? qty(x.nb) + ' sac(s) = ' + qty(x.qte) + ' kg' : qty(x.qte) + ' ' + x.p.unite)); return refresh(); }); });
+    busy($('#bsave'), function () { return api('addPurchase', a).then(function () { toast('✅ Achat enregistré : ' + (mode === 'sacs' ? qty(x.nb) + ' ' + pw.pack + '(s) = ' + qty(x.qte) + ' ' + x.p.unite : qty(x.qte) + ' ' + x.p.unite)); return refresh(); }); });
   };
   bindForm();
-  api('history', { table: 'Achats', from: addDays(today(), -29), to: today() }).then(function (rows) {
-    var sups = {}; rows.forEach(function (r) { if (r.fournisseur) sups[r.fournisseur] = 1; });
-    $('#sups').innerHTML = Object.keys(sups).map(function (s) { return '<option value="' + esc(s) + '">'; }).join('');
-    $('#blist').innerHTML = rows.length ? '<table><thead><tr><th>Date</th><th>Produit</th><th class="n">Qté</th><th class="n">PU</th><th class="n">Total</th></tr></thead><tbody>' +
-      rows.slice(0, 25).map(function (r) { return '<tr><td>' + frShort(r.date) + '</td><td>' + esc(r.produit) + '<div style="font-size:12px;color:var(--muted)">' + (r.nbSacs ? qty(r.nbSacs) + ' sac(s) × ' + qty(r.kgSac) + ' kg' : '') + (r.fournisseur ? (r.nbSacs ? ' · ' : '') + esc(r.fournisseur) : '') + '</div></td><td class="n">' + qty(r.qte) + '</td><td class="n">' + nf1.format(r.pu) + '</td><td class="n"><b>' + nf.format(r.qte * r.pu) + '</b></td></tr>'; }).join('') + '</tbody></table>' : '<div class="empty">Aucun achat sur 30 jours.</div>';
-  }).catch(function (e) { $('#blist').innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+  recentPurchases();
 }
 
 /* ===================== Stock ===================== */
@@ -1317,7 +1531,7 @@ function vStock(w) {
     });
     $('#stbl').innerHTML = rows.length ? '<table><thead><tr><th>Produit</th><th class="n">Entrées</th><th class="n">Ventes</th><th class="n">Pertes</th><th class="n">Stock</th><th class="n">Coût moyen</th><th class="n">Valeur</th><th>État</th><th></th></tr></thead><tbody>' +
       rows.slice(0, 300).map(function (s) {
-        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n">' + qty(s.entrees) + '</td><td class="n">' + qty(s.sorties) + '</td><td class="n">' + qty(s.pertes) + '</td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(s.unite) + (s.sacs != null && s.stock > 0 ? '<div style="font-size:12px;color:var(--muted)">≈ ' + qty(s.sacs) + ' sac(s) de ' + qty(s.kgSac) + ' kg</div>' : '') + '</td><td class="n">' + nf.format(s.coutMoyen) + '</td><td class="n">' + nf.format(s.valeur) + '</td><td><span class="badge ' + s.statut + '">' + { ok: 'OK', bas: 'Stock bas', rupture: 'Rupture', neutre: '—' }[s.statut] + '</span></td><td><button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
+        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n">' + qty(s.entrees) + '</td><td class="n">' + qty(s.sorties) + '</td><td class="n">' + qty(s.pertes) + '</td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(s.unite) + (s.sacs != null && s.stock > 0 ? '<div style="font-size:12px;color:var(--muted)">≈ ' + qty(s.sacs) + (s.unite === 'kg' ? ' sac(s) de ' + qty(s.kgSac) + ' kg' : ' carton(s) de ' + qty(s.kgSac)) + '</div>' : '') + '</td><td class="n">' + nf.format(s.coutMoyen) + '</td><td class="n">' + nf.format(s.valeur) + '</td><td><span class="badge ' + s.statut + '">' + { ok: 'OK', bas: 'Stock bas', rupture: 'Rupture', neutre: '—' }[s.statut] + '</span></td><td><button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
       }).join('') + '</tbody></table>' : '<div class="empty">Aucun produit.</div>';
     $$('[data-loss]', w).forEach(function (b) { b.onclick = function () { lossModal(b.dataset.loss); }; });
   }
@@ -1365,7 +1579,7 @@ function productModal(id) {
     '<label class="f"><span>Unité de vente</span><input id="pu" list="ul" value="' + esc(p.unite) + '"><datalist id="ul">' + ['kg', 'pièce', 'carton', 'sac', 'paquet', 'boîte', 'sachet', 'bouteille', 'litre', 'bidon', 'tas', 'barre'].map(function (u) { return '<option value="' + u + '">'; }).join('') + '</datalist></label></div>' +
     '<div class="row"><label class="f"><span>Prix d\'achat de référence (FCFA)</span><input id="pa" type="number" inputmode="decimal" step="any" min="0" value="' + (p.prixAchat || '') + '"></label>' +
     '<label class="f"><span>Prix de vente (FCFA)</span><input id="pv" type="number" inputmode="decimal" step="any" min="0" value="' + (p.prixVente || '') + '"></label></div>' +
-    '<div class="row"><label class="f"><span>Poids habituel d\'un sac / carton (kg)</span><input id="pk" type="number" inputmode="decimal" step="any" min="0" value="' + (p.kgSac || '') + '" placeholder="ex : 25"></label>' +
+    '<div class="row"><label class="f"><span>Contenu d\'un sac / carton (kg ou nombre d\'unités)</span><input id="pk" type="number" inputmode="decimal" step="any" min="0" value="' + (p.kgSac || '') + '" placeholder="ex : 25"></label>' +
     '<label class="f"><span>Seuil d\'alerte stock</span><input id="ps" type="number" inputmode="decimal" step="any" min="0" value="' + (p.seuil || '') + '"></label></div>' +
     '<div class="row">' +
     '<label class="f"><span>Statut</span><select id="pa2"><option value="1"' + (p.actif ? ' selected' : '') + '>Actif</option><option value="0"' + (!p.actif ? ' selected' : '') + '>Désactivé (masqué à la vente)</option></select></label></div>' +
@@ -1463,8 +1677,8 @@ function vHistory(w) {
   $('#hf').onchange = function () { H.from = this.value; vHistory(w); }; $('#ht').onchange = function () { H.to = this.value; vHistory(w); };
   var hc = $('#hc'); if (hc) hc.onchange = function () { H.credit = this.value === '1'; vHistory(w); };
   var cols = {
-    Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte) + (r.nbSacs ? '<div style="font-size:12px;color:var(--muted)">' + qty(r.nbSacs) + ' sac(s) × ' + qty(r.kgSac) + ' kg</div>' : ''); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
-    Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Sacs', function (r) { return r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) + ' kg' : '—'; }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1]],
+    Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte) + (r.nbSacs ? '<div style="font-size:12px;color:var(--muted)">' + qty(r.nbSacs) + ' × ' + qty(r.kgSac) + '</div>' : ''); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
+    Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Sacs / cartons', function (r) { return r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) : '—'; }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU achat', function (r) { return nf2.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf. prévu', function (r) { var p = prodById(r.produitId); return p && p.prixVente > 0 ? nf.format((p.prixVente - r.pu) * r.qte) : '—'; }, 1]],
     Depenses: [['Date', function (r) { return frShort(r.date); }], ['Catégorie', function (r) { return esc(r.categorie); }], ['Libellé', function (r) { return esc(r.libelle); }], ['Montant', function (r) { return '<b>' + nf.format(r.montant) + '</b>'; }, 1]],
     Pertes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['Motif', function (r) { return esc(r.motif); }], ['Valeur', function (r) { return '<b>' + nf.format(r.qte * r.cout) + '</b>'; }, 1]]
   }[H.table];
