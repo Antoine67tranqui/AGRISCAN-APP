@@ -34,7 +34,35 @@ Ouvrez le lien dans Chrome (Android) ou Safari (iPhone), connectez-vous avec le 
 ### Alternative en ligne de commande (facultatif)
 Avec [clasp](https://github.com/google/clasp) : `npm i -g @google/clasp`, `clasp login`, puis dans `boutique-poisson/apps-script/` créez un fichier `.clasp.json` contenant `{"scriptId":"<ID du script>","rootDir":"."}` et lancez `clasp push`.
 
-## Mise à jour de l'application
+## Gérer le stock : démarrer, suivre, racheter
+
+**1. Inventaire de départ (une seule fois, indispensable).** Stock > Inventaire : comptez ce que vous avez en boutique et saisissez-le (cartons + unités en vrac pour les produits en cartons). Le premier comptage devient du **stock initial**, valorisé au prix d'achat de référence (ou au prix saisi). Datez-le du jour où vous commencez à suivre les ventes dans l'application : des ventes saisies avec une date antérieure au stock initial produiraient un stock négatif dans l'historique. Le stock initial n'est **pas** une dépense : il n'entre pas dans les achats de la période.
+
+**2. Au quotidien.** Chaque vente retire du stock, chaque achat (bon d'achat ou achat simple) en ajoute. Après un achat, un récapitulatif montre le **cumul** : stock avant, entrée, stock maintenant, couverture en jours de vente. Le panier de vente signale un stock insuffisant avant l'enregistrement.
+
+**3. Savoir ce qui reste.** Stock > Disponible : quantité en stock (avec l'équivalent en cartons), vente par jour, couverture en jours, état (OK, À racheter, Urgent, Rupture, Négatif). Le bouton **Fiche** montre, pour un produit, tous les mouvements avec le solde après chacun et la courbe du niveau de stock dans le temps.
+
+**4. Savoir quoi acheter.** Stock > À acheter : liste des produits à racheter, du plus urgent au moins urgent, avec la quantité proposée (arrondie au carton ou au sac), le coût estimé et le dernier fournisseur. Vous pouvez modifier les quantités, copier la liste, l'envoyer par WhatsApp ou **préparer un bon d'achat** prérempli.
+
+Comment la prévision est calculée :
+- *Vente par jour* = quantités vendues sur la période (30 jours par défaut) divisées par le nombre de jours observés depuis la première vente et la première entrée du produit.
+- *Seuil d'alerte* = le seuil saisi sur la fiche produit, sinon vente par jour × délai d'alerte (3 jours par défaut).
+- *Stock cible* = le stock cible saisi sur la fiche produit, sinon vente par jour × jours à couvrir (7 par défaut), et au moins 2 × le seuil.
+- *Urgent* = rupture, stock négatif ou moins d'un jour de vente ; *Bientôt* = sous le seuil d'alerte.
+- Quantité proposée = stock cible − stock actuel, arrondie au carton ou au sac entier quand son contenu est renseigné.
+Les réglages (jours à couvrir, délai d'alerte, période de calcul) se changent dans Stock > À acheter > Réglages et sont partagés entre vos appareils.
+
+Limites à connaître : avec moins de deux semaines de ventes enregistrées, la prévision est peu fiable : renseignez un seuil d'alerte ou un stock cible sur vos produits clés. Elle ne tient pas compte des saisons, des fêtes, des délais de livraison ni des remises des fournisseurs. Les produits vendus en deux lignes (par exemple « carton » et « détail ») ont deux stocks séparés : préférez une seule ligne avec le contenu du carton.
+
+**5. Contrôler.** Refaites un inventaire de temps en temps (Stock > Inventaire). Un comptage inférieur au stock calculé est enregistré comme **perte** (motif « Écart d'inventaire », valorisée au coût moyen, déduite du bénéfice net) ; un comptage supérieur devient un **surplus** (feuille Ajustements). Un comptage identique n'écrit rien.
+
+## Mise à jour de l'application déjà déployée
+Les modifications de code se déploient sans changer le lien :
+1. Copiez la version à jour de `Code.gs`, `Core.gs` et `Index.html` dans l'éditeur Apps Script (remplacez tout le contenu de chaque fichier). `Catalog.gs` et `appsscript.json` ne changent pas.
+2. **Déployer > Gérer les déploiements**, cliquez sur le **crayon**, **Version : Nouvelle version**, **Déployer**.
+3. Rechargez l'application. La première ouverture ajoute automatiquement les feuilles ou colonnes manquantes du classeur.
+
+## Mise à jour de l'application (rappel)
 Après toute modification du code (recopier les fichiers modifiés dans l'éditeur, en particulier `Core.gs`, `Code.gs`, `Catalog.gs` et `Index.html`) : **Déployer > Gérer les déploiements > Modifier (crayon) > Version : Nouvelle version > Déployer**. L'URL ne change pas.
 
 ## Utilisation au quotidien

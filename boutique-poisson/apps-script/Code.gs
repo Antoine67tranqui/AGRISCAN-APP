@@ -4,7 +4,7 @@
  * Voir docs/INSTALLATION.md pour la mise en ligne.
  */
 
-var NAV_SHEETS = ['LISEZ-MOI', 'Produits', 'Achats', 'Ventes', 'Depenses', 'Pertes', 'Stock', 'Journalier', 'Mensuel'];
+var NAV_SHEETS = ['LISEZ-MOI', 'Produits', 'Achats', 'Ventes', 'Depenses', 'Pertes', 'Ajustements', 'Stock', 'A_acheter', 'Journalier', 'Mensuel'];
 
 function ensureSetup_() {
   var ss = getSpreadsheet_();
@@ -137,6 +137,11 @@ SheetStore_.prototype.update = function (table, id, patch) {
   });
   this.cache = {};
 };
+SheetStore_.prototype.getSettings = function () {
+  var raw = PropertiesService.getScriptProperties().getProperty('SETTINGS');
+  try { return raw ? JSON.parse(raw) : {}; } catch (e) { return {}; }
+};
+SheetStore_.prototype.saveSettings = function (s) { PropertiesService.getScriptProperties().setProperty('SETTINGS', JSON.stringify(s)); };
 SheetStore_.prototype.lock = function (fn) {
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
@@ -150,7 +155,7 @@ var HEAD_BG = '#0b4f6c', HEAD_FG = '#ffffff';
 function setup() {
   var ss = getSpreadsheet_(), created = [];
   if (ss.getSpreadsheetTimeZone() !== 'Africa/Lagos') ss.setSpreadsheetTimeZone('Africa/Lagos');
-  ['Produits', 'Achats', 'Ventes', 'Depenses', 'Pertes'].forEach(function (name) {
+  ['Produits', 'Achats', 'Ventes', 'Depenses', 'Pertes', 'Ajustements'].forEach(function (name) {
     var sh = ss.getSheetByName(name);
     if (!sh) { sh = ss.insertSheet(name); created.push(name); }
     var cols = SCHEMA[name];
@@ -167,15 +172,16 @@ function setup() {
     var rows = CATALOGUE.map(function (r, i) { return ['P' + ('000' + (i + 1)).slice(-4), r[0], r[1], r[2], r[3] || '', r[4] || '', '', 'OUI', r[5] || '']; });
     prod.getRange(2, 1, rows.length, 9).setValues(rows);
   }
-  ['Stock', 'Journalier', 'Mensuel'].forEach(function (n) { if (!ss.getSheetByName(n)) { ss.insertSheet(n); created.push(n); } });
+  ['Stock', 'A_acheter', 'Journalier', 'Mensuel'].forEach(function (n) { if (!ss.getSheetByName(n)) { ss.insertSheet(n); created.push(n); } });
   if (created.indexOf('Stock') >= 0) buildStockSheet_(ss.getSheetByName('Stock'));
+  if (created.indexOf('A_acheter') >= 0) buildToBuySheet_(ss.getSheetByName('A_acheter'));
   if (created.indexOf('Journalier') >= 0) buildPeriodSheet_(ss.getSheetByName('Journalier'), 'Date', false);
   if (created.indexOf('Mensuel') >= 0) buildPeriodSheet_(ss.getSheetByName('Mensuel'), 'Mois', true);
   return created;
 }
 
 function buildStockSheet_(sh) {
-  var head = ['ID', 'Produit', 'Catégorie', 'Unité', 'Entrées (achats)', 'Sorties (ventes)', 'Pertes', 'Stock actuel',
+  var head = ['ID', 'Produit', 'Catégorie', 'Unité', 'Entrées (achats + stock initial)', 'Sorties (ventes)', 'Pertes', 'Stock actuel',
     'Coût moyen d\'achat (FCFA)', 'Valeur du stock (FCFA)', 'Seuil d\'alerte', 'Statut'];
   sh.getRange(1, 1, 1, head.length).setValues([head]).setBackground(HEAD_BG).setFontColor(HEAD_FG).setFontWeight('bold').setWrap(true);
   sh.setFrozenRows(1);
@@ -184,11 +190,11 @@ function buildStockSheet_(sh) {
     f.push([
       '=IF(Produits!A' + r + '="","",Produits!A' + r + ')', '=IF($A' + r + '="","",Produits!C' + r + ')',
       '=IF($A' + r + '="","",Produits!B' + r + ')', '=IF($A' + r + '="","",Produits!D' + r + ')',
-      '=IF($A' + r + '="","",SUMIF(Achats!$C:$C,$A' + r + ',Achats!$E:$E))',
+      '=IF($A' + r + '="","",SUMIF(Achats!$C:$C,$A' + r + ',Achats!$E:$E)+SUMIF(Ajustements!$C:$C,$A' + r + ',Ajustements!$E:$E))',
       '=IF($A' + r + '="","",SUMIF(Ventes!$C:$C,$A' + r + ',Ventes!$F:$F))',
       '=IF($A' + r + '="","",SUMIF(Pertes!$C:$C,$A' + r + ',Pertes!$E:$E))',
       '=IF($A' + r + '="","",E' + r + '-F' + r + '-G' + r + ')',
-      '=IF($A' + r + '="","",IFERROR(SUMIF(Achats!$C:$C,$A' + r + ',Achats!$G:$G)/E' + r + ',N(Produits!E' + r + ')))',
+      '=IF($A' + r + '="","",IFERROR((SUMIF(Achats!$C:$C,$A' + r + ',Achats!$G:$G)+SUMIF(Ajustements!$C:$C,$A' + r + ',Ajustements!$H:$H))/(SUMIF(Achats!$C:$C,$A' + r + ',Achats!$E:$E)+SUMIFS(Ajustements!$E:$E,Ajustements!$C:$C,$A' + r + ',Ajustements!$G:$G,">0")),N(Produits!E' + r + ')))',
       '=IF($A' + r + '="","",MAX(H' + r + ',0)*I' + r + ')',
       '=IF($A' + r + '="","",N(Produits!G' + r + '))',
       '=IF($A' + r + '="","",IF(AND(E' + r + '=0,F' + r + '=0,G' + r + '=0),"-",IF(H' + r + '<=0,"Rupture",IF(AND(K' + r + '>0,H' + r + '<=K' + r + '),"Stock bas","OK"))))'
@@ -202,6 +208,15 @@ function buildStockSheet_(sh) {
   ];
   sh.setConditionalFormatRules(rules);
   sh.getRange('N1').setValue('Feuille calculée automatiquement : ne rien saisir ici.').setFontStyle('italic');
+}
+
+/** Liste simple (basée sur les seuils d'alerte) ; les prévisions complètes sont dans l'application. */
+function buildToBuySheet_(sh) {
+  var head = ['Produit', 'Catégorie', 'Unité', 'Stock actuel', "Seuil d'alerte", 'Statut'];
+  sh.getRange(1, 1, 1, head.length).setValues([head]).setBackground(HEAD_BG).setFontColor(HEAD_FG).setFontWeight('bold').setWrap(true);
+  sh.setFrozenRows(1);
+  sh.getRange('A2').setFormula('=IFERROR(FILTER({Stock!B2:B,Stock!C2:C,Stock!D2:D,Stock!H2:H,Stock!K2:K,Stock!L2:L},(Stock!L2:L="Rupture")+(Stock!L2:L="Stock bas")),"Rien à acheter pour l\'instant")');
+  sh.getRange('H1').setValue('Liste calculée automatiquement à partir des seuils. Les prévisions fondées sur vos ventes sont dans l\'application (Stock > À acheter).').setFontStyle('italic');
 }
 
 function buildPeriodSheet_(sh, firstLabel, monthly) {

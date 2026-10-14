@@ -17,6 +17,8 @@ MemoryStore_.prototype.update = function (t, id, patch) {
   this.onChange(this.db);
 };
 MemoryStore_.prototype.lock = function (fn) { return fn(); };
+MemoryStore_.prototype.getSettings = function () { return Object.assign({}, this.db.__settings || {}); };
+MemoryStore_.prototype.saveSettings = function (s) { this.db.__settings = Object.assign({}, s); this.onChange(this.db); };
 function seedProducts_() {
   return CATALOGUE.map(function (r, i) { return { id: 'P' + ('000' + (i + 1)).slice(-4), categorie: r[0], nom: r[1], unite: r[2], prixAchat: r[3] || '', prixVente: r[4] || '', seuil: '', actif: 'OUI', kgSac: r[5] || '' }; });
 }

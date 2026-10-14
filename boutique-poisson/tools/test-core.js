@@ -128,3 +128,77 @@ assert.throws(() => T('addPurchases_(store,{date:"2026-10-11",lines:[]})'), /vid
 r = T(`addSale_(store,{date:"2026-10-12",lines:[{produitId:"${tg}",nbSacs:0.5,kgSac:48,prixSac:12500}]})`);
 eq(r.total, 6250, 'vente d\'un demi-carton'); 
 console.log('OK : bon d\'achat multi-lignes et cartons en unités');
+
+/* ===== Inventaire, stock initial, prévisions d'achat, fiche de stock ===== */
+run(`var s2 = new MemoryStore_({ Produits: seedProducts_() });
+function id2(n){ return s2.all('Produits').filter(function(p){return p.nom.indexOf(n)===0})[0].id; }`);
+const T2 = (c) => run(c);
+const X = T2('id2("Tomate Royale 210")');                 // boîte, 48 par carton, coût réf 185,42, vente 250
+// 1) Stock initial : 100 boîtes comptées, valorisées au prix d'achat de référence
+let inv = T2(`inventory_(s2,{date:"2026-10-01",lines:[{produitId:"${X}",compte:100},{produitId:"${T2('id2("Spaghetti Doga")')}",compte:""}]})`);
+eq(inv.ajouts, 1, 'inventaire : 1 ajout'); eq(inv.pertes, 0, 'inventaire : aucune perte');
+let aj = T2('s2.all("Ajustements")')[0];
+eq(aj.motif, 'Stock initial', 'motif stock initial'); eq(aj.qte, 100, 'qte stock initial'); eq(aj.cout, 185.42, 'valorisé au prix de référence');
+let row = T2(`stockTable_(s2,"2026-10-01").filter(function(p){return p.id==="${X}"})[0]`);
+eq(row.stock, 100, 'stock = stock initial'); eq(row.ajouts, 100, 'ajouts'); eq(row.coutMoyen, 185.42, 'coût moyen = coût du stock initial');
+// 2) Le stock initial n'est pas une dépense : aucun achat dans le rapport
+eq(T2('report_(s2,"2026-10-01","2026-10-31")').totaux.achats, 0, 'stock initial hors achats');
+// 3) Coût moyen pondéré : stock initial (100 à 185,42) + achat (100 à 200)
+T2(`addPurchase_(s2,{date:"2026-10-02",produitId:"${X}",qte:100,pu:200})`);
+eq(T2(`stockTable_(s2,"2026-10-02").filter(function(p){return p.id==="${X}"})[0]`).coutMoyen, 192.71, 'coût moyen pondéré avec stock initial');
+// 4) Ventes régulières : 10 / jour du 03 au 07/10
+for (let d = 3; d <= 7; d++) T2(`addSale_(s2,{date:"2026-10-0${d}",lines:[{produitId:"${X}",qte:10,pu:250}]})`);
+row = T2(`stockTable_(s2,"2026-10-07").filter(function(p){return p.id==="${X}"})[0]`);
+eq(row.stock, 150, 'stock après 5 jours de ventes'); eq(row.venteJour, 10, 'vitesse de vente = 10 / jour'); eq(row.couverture, 15, 'couverture = 15 jours');
+eq(row.reappro.niveau, 'ok', '15 jours de stock : rien à acheter'); eq(row.statut, 'ok', 'statut ok');
+// 5) Le stock baisse : 8 jours de ventes de plus à 20 / jour => bientôt, puis urgent
+for (let d = 8; d <= 13; d++) T2(`addSale_(s2,{date:"2026-10-${d < 10 ? '0' + d : d}",lines:[{produitId:"${X}",qte:20,pu:250}]})`);
+row = T2(`stockTable_(s2,"2026-10-13").filter(function(p){return p.id==="${X}"})[0]`);
+eq(row.stock, 30, 'stock 150 - 6 x 20'); ok(row.venteJour > 10 && row.venteJour < 20, 'vitesse de vente recalculée');
+ok(row.reappro.niveau === 'urgent' || row.reappro.niveau === 'bientot', 'à racheter');
+const rl = T2('reorderList_(s2,"2026-10-13")');
+ok(rl.items.length >= 1 && rl.items[0].id === X, 'le produit figure dans la liste à acheter');
+const it = rl.items[0].reappro;
+eq(it.cartons, Math.ceil(it.aAcheter / 48), 'quantité arrondie au carton'); eq(it.qteArrondie, it.cartons * 48, 'qte arrondie = cartons x contenu');
+eq(it.coutEstime, Math.round(it.qteArrondie * it.coutUnitaire), 'coût estimé');
+ok(it.qteArrondie >= it.aAcheter, 'on ne sous-achète pas');
+eq(rl.joursObserves, 11, 'jours observés depuis la première vente');
+// 6) Fiche de stock : solde cumulé cohérent avec le stock calculé
+const card = T2(`stockCard_(s2,"${X}")`);
+eq(card.solde, 30, 'solde final de la fiche = stock'); eq(card.entrees, 200, 'entrées cumulées (stock initial + achat)'); eq(card.sorties, 170, 'sorties cumulées');
+eq(card.mouvements[0].type, 'Stock initial', '1er mouvement = stock initial'); eq(card.mouvements[0].solde, 100, 'solde après stock initial');
+eq(card.mouvements[1].solde, 200, 'solde après achat (cumul avec l\'existant)');
+ok(card.mouvements.every((m, i, a) => i === 0 || m.date >= a[i - 1].date), 'mouvements triés par date');
+// 7) Inventaire de contrôle : 25 comptés pour 30 attendus => perte de 5 valorisée au coût moyen
+inv = T2(`inventory_(s2,{date:"2026-10-13",lines:[{produitId:"${X}",compte:25}]})`);
+eq(inv.pertes, 1, 'écart négatif = perte'); eq(inv.valeurPerdue, Math.round(5 * 192.71), 'valeur de la perte');
+eq(T2(`stockTable_(s2,"2026-10-13").filter(function(p){return p.id==="${X}"})[0]`).stock, 25, 'stock recalé sur le comptage');
+eq(T2('s2.all("Pertes")')[0].motif, 'Écart d\'inventaire', 'motif écart d\'inventaire');
+// 8) Comptage identique : rien n'est écrit ; surplus : ajustement valorisé au coût saisi
+inv = T2(`inventory_(s2,{date:"2026-10-13",lines:[{produitId:"${X}",compte:25}]})`); eq(inv.inchanges, 1, 'comptage identique ignoré');
+inv = T2(`inventory_(s2,{date:"2026-10-14",lines:[{produitId:"${X}",compte:30,cout:190}]})`);
+eq(T2('s2.all("Ajustements")').slice(-1)[0].motif, 'Inventaire (surplus)', 'surplus après mouvements');
+// 9) Stock négatif : vente sans stock enregistré => statut négatif, signalé, corrigé par l'inventaire
+const Y = T2('id2("Spaghetti Doga")');
+T2(`addSale_(s2,{date:"2026-10-14",lines:[{produitId:"${Y}",qte:4,pu:375}]})`);
+row = T2(`stockTable_(s2,"2026-10-14").filter(function(p){return p.id==="${Y}"})[0]`);
+eq(row.statut, 'negatif', 'stock négatif signalé'); eq(row.reappro.verifier, true, 'à vérifier par inventaire');
+T2(`inventory_(s2,{date:"2026-10-14",lines:[{produitId:"${Y}",compte:12}]})`);
+eq(T2(`stockTable_(s2,"2026-10-14").filter(function(p){return p.id==="${Y}"})[0]`).stock, 12, 'inventaire corrige le stock négatif');
+eq(T2('dashboard_(s2,"2026-10-14")').negatifs, 0, 'plus de produit en stock négatif');
+// 10) Seuil explicite et stock cible explicite
+const Z = T2('id2("Couscous Ginny")');
+T2(`inventory_(s2,{date:"2026-10-14",lines:[{produitId:"${Z}",compte:8}]})`);
+T2(`saveProduct_(s2,{id:"${Z}",nom:"Couscous Ginny 500 g",categorie:"Pâtes et couscous",unite:"paquet",prixAchat:450,prixVente:500,seuil:10,cible:60,kgSac:20,actif:true})`);
+row = T2(`stockTable_(s2,"2026-10-14").filter(function(p){return p.id==="${Z}"})[0]`);
+eq(row.reappro.niveau, 'bientot', 'sous le seuil saisi'); eq(row.reappro.cible, 60, 'stock cible saisi'); eq(row.reappro.cartons, 3, '(60 - 8) / 20 => 3 cartons'); eq(row.reappro.qteArrondie, 60, '3 cartons de 20');
+// 11) Réglages partagés
+eq(T2('getSettings_(s2).joursCible'), 7, 'réglage par défaut');
+T2('saveSettings_(s2,{joursCible:14,delai:5})'); eq(T2('getSettings_(s2).joursCible'), 14, 'réglage enregistré'); eq(T2('getSettings_(s2).fenetre'), 30, 'fenêtre inchangée');
+assert.throws(() => T2('saveSettings_(s2,{joursCible:0})'), /Jours/); pass++;
+// 12) Suppression d'un ajustement : le stock suit
+const ajId = T2('s2.all("Ajustements")').filter(a => a.produitId === '' + X + '' && a.motif === 'Inventaire (surplus)')[0].id;
+T2(`removeRecord_(s2,"Ajustements","${ajId}")`);
+eq(T2(`stockTable_(s2,"2026-10-14").filter(function(p){return p.id==="${X}"})[0]`).stock, 25, 'suppression du surplus');
+assert.throws(() => T2(`inventory_(s2,{date:"2026-10-14",lines:[{produitId:"${X}",compte:-1}]})`), /négative/); pass++;
+console.log("OK : inventaire, stock initial, prévisions d'achat, fiche de stock");

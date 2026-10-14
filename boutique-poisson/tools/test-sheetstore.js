@@ -20,7 +20,7 @@ function FakeSheet(name) {
   this.deleteRow = (r) => { self.rows.splice(r-1, 1); };
   this.setConditionalFormatRules = () => {};
 }
-const sheets = {};
+const sheets = {}, props = {};
 const ss = {
   getSheetByName: n => sheets[n] || null,
   insertSheet: n => (sheets[n] = new FakeSheet(n)),
@@ -32,11 +32,11 @@ const ctx = require('./load-gas')({
   LockService: { getScriptLock: () => ({ waitLock() {}, releaseLock() {} }) },
   Utilities: { formatDate: (d) => d.toISOString().slice(0, 10) },
   Session: { getScriptTimeZone: () => 'Africa/Lagos' },
-  PropertiesService: {}, HtmlService: {}
+  PropertiesService: { getScriptProperties: () => ({ getProperty: k => props[k] || null, setProperty: (k, v) => { props[k] = v; } }) }, HtmlService: {}
 });
 const vm = require('vm'), run = c => vm.runInContext(c, ctx);
 run('var created = setup();');
-assert.strictEqual(run('JSON.stringify(created.sort())'), JSON.stringify(['Achats','Depenses','Journalier','Mensuel','Pertes','Produits','Stock','Ventes']), 'feuilles créées');
+assert.strictEqual(run('JSON.stringify(created.sort())'), JSON.stringify(['A_acheter','Achats','Ajustements','Depenses','Journalier','Mensuel','Pertes','Produits','Stock','Ventes']), 'feuilles créées');
 assert.strictEqual(sheets.Produits.getLastRow(), 312, 'produits amorcés (1 en-tête + 311)');
 assert.strictEqual(sheets.Ventes.rows[0][9], 'Bénéfice brut (FCFA)', 'en-tête Ventes');
 // Parcours complet via api()
@@ -63,4 +63,13 @@ assert.strictEqual(sheets.Produits.rows[1][4], 1000);
 run(`api("remove",{table:"Ventes",id:"${sale.id}-1"})`);
 assert.strictEqual(sheets.Ventes.getLastRow(), 1, 'ligne supprimée');
 assert.throws(() => run('api("remove",{table:"Ventes",id:"NOPE"})'), /introuvable/);
+// Inventaire de départ puis fiche de stock via l'API (écriture dans la feuille Ajustements)
+const neuf = run('api("bootstrap").produits[1].id');
+run(`api("inventory",{date:"2026-10-01",lines:[{produitId:"${neuf}",compte:80}]})`);
+assert.strictEqual(sheets.Ajustements.rows[1][5], 'Stock initial', 'ligne Stock initial écrite'); assert.strictEqual(sheets.Ajustements.rows[1][4], 80);
+assert.strictEqual(sheets.Ajustements.rows[1][7], '=E2*G2', 'formule valeur ajustement');
+const card = run(`api("stockCard",{produitId:"${neuf}"})`);
+assert.strictEqual(card.mouvements[0].type, 'Stock initial'); assert.strictEqual(card.solde, 80);
+assert.strictEqual(run('api("settings").joursCible'), 7); run('api("saveSettings",{joursCible:10})'); assert.strictEqual(run('api("settings").joursCible'), 10, 'réglages mémorisés');
+assert.ok(run('api("reorder",{today:"2026-10-20"})').items !== undefined, 'liste à acheter');
 console.log('OK : SheetStore_ (lecture, écriture, formules, suppression, mise à jour)');

@@ -14,7 +14,8 @@ function demoSeed_(st) {
   var ids = {};
   st.all('Produits').forEach(function (p) { if (P[p.nom]) { ids[p.nom] = p.id; st.update('Produits', p.id, { prixAchat: P[p.nom][0], prixVente: P[p.nom][1], seuil: P[p.nom][2] }); } });
   var t = new Date(); function d(n) { var x = new Date(t); x.setDate(x.getDate() - n); return x.getFullYear() + '-' + ('0' + (x.getMonth() + 1)).slice(-2) + '-' + ('0' + x.getDate()).slice(-2); }
-  Object.keys(ids).forEach(function (n) { addPurchase_(st, { date: d(13), produitId: ids[n], qte: 120, pu: P[n][0] * 0.97, fournisseur: 'Fournisseur A' }); addPurchase_(st, { date: d(6), produitId: ids[n], qte: 60, pu: P[n][0], fournisseur: 'Fournisseur B' }); });
+  inventory_(st, { date: d(13), lines: Object.keys(ids).map(function (n) { return { produitId: ids[n], compte: 120 }; }) });
+  Object.keys(ids).forEach(function (n) { addPurchase_(st, { date: d(6), produitId: ids[n], qte: 60, pu: P[n][0], fournisseur: 'Fournisseur B' }); });
   for (var i = 12; i >= 0; i--) {
     var lines = Object.keys(ids).filter(function (n, k) { return (i + k) % 3 !== 0; }).map(function (n, k) { return { produitId: ids[n], qte: 2 + ((i * 7 + k * 3) % 9), pu: P[n][1] }; });
     addSale_(st, { date: d(i), paiement: i % 5 === 0 ? 'Mobile Money' : 'Espèces', lines: lines });

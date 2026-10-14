@@ -132,6 +132,11 @@ tr:hover td{background:color-mix(in srgb,var(--brand-soft) 45%,transparent)}
 .chart text{fill:var(--ink)} .chart .mut{fill:var(--muted)} .chart .gl{stroke:var(--line)} .chart .ax{stroke:var(--ink)}
 .skel{background:linear-gradient(90deg,var(--line),var(--brand-soft),var(--line));background-size:200% 100%;animation:sh 1.2s infinite;border-radius:10px;height:84px}
 .alert{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:14px}
+.banner.act{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.cnt{display:inline-block;background:var(--bad);color:#fff;border-radius:99px;padding:0 7px;font-size:12px;margin-left:4px}
+.nb{background:var(--bad);color:#fff;border-radius:99px;padding:0 6px;font-size:11px;font-weight:700;margin-left:auto;min-width:18px;text-align:center}
+.bnav button{position:relative} .bnav .nb{position:absolute;top:0;right:22%;margin:0}
+@media(max-width:700px){.hide-m{display:none}}
 .banner{background:var(--warn-bg);color:var(--warn);padding:8px 14px;border-radius:10px;font-weight:600;margin-bottom:14px;font-size:14px}
 .view{animation:fade .35s backwards}
 .kpis .card{animation:rise .5s both} .kpis .card:nth-child(2){animation-delay:.05s}.kpis .card:nth-child(3){animation-delay:.1s}.kpis .card:nth-child(4){animation-delay:.15s}.kpis .card:nth-child(5){animation-delay:.2s}.kpis .card:nth-child(6){animation-delay:.25s}
@@ -286,7 +291,8 @@ function aggregate(days) {
 /* ===================== État ===================== */
 var S = { data: null, view: 'home', day: today(), cart: [], pay: 'Espèces', note: '', cat: 'Toutes', q: '', saleDate: today(), cartOpen: false,
           rep: { preset: '7', from: addDays(today(), -6), to: today() }, hist: { table: 'Ventes', from: addDays(today(), -29), to: today(), credit: false },
-          stockFilter: 'tous', stockQ: '', prodQ: '', prodCat: 'Toutes' };
+          stockTab: 'dispo', stockFilter: 'dispo', stockQ: '', stockCat: 'Toutes', stockSort: 'nom', prodQ: '', prodCat: 'Toutes',
+          inv: {}, invDate: today(), invQ: '', invCat: 'Toutes', invAll: false, reapSel: {}, reapQty: {}, reorder: null, bon: null };
 
 var ICONS = {
   home: '<path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/>',
@@ -297,33 +303,45 @@ var ICONS = {
   products: '<path d="M20.6 13.4l-7.2 7.2a2 2 0 01-2.8 0L3 13V3h10l7.6 7.6a2 2 0 010 2.8z"/><circle cx="7.5" cy="7.5" r="1.2"/>',
   expenses: '<rect x="2" y="6" width="20" height="13" rx="2"/><path d="M2 10h20M6 15h4"/>',
   reports: '<path d="M4 20V10M10 20V4M16 20v-8M22 20H2"/>',
+  reappro: '<path d="M9 6h11M9 12h11M9 18h11"/><path d="M3.5 6.5l1.5 1.5 2.5-3M3.5 12.5l1.5 1.5 2.5-3M3.5 18.5l1.5 1.5 2.5-3"/>',
   history: '<path d="M3 12a9 9 0 109-9 9 9 0 00-6.4 2.6L3 8"/><path d="M3 3v5h5M12 7v5l3 2"/>'
 };
 function icon(n) { return '<svg viewBox="0 0 24 24" aria-hidden="true">' + ICONS[n] + '</svg>'; }
-var NAV = [['home', 'Accueil'], ['sell', 'Vendre'], ['buy', 'Achats'], ['stock', 'Stock'], ['products', 'Produits'], ['expenses', 'Dépenses'], ['reports', 'Rapports'], ['history', 'Historique']];
+var NAV = [['home', 'Accueil'], ['sell', 'Vendre'], ['buy', 'Achats'], ['stock', 'Stock'], ['reappro', 'À acheter'], ['products', 'Produits'], ['expenses', 'Dépenses'], ['reports', 'Rapports'], ['history', 'Historique']];
 var LOGO = '<svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="23" fill="#fff" opacity=".16"/><path d="M8 24c5-8 13-11 21-8 3 1 6 4 8 8-2 4-5 7-8 8-8 3-16 0-21-8z" fill="#fff"/><path d="M37 24l6-7v14z" fill="#fff"/><circle cx="16" cy="22" r="2" fill="#0b4f6c"/></svg>';
 
 function buildNav() {
   $('#side').innerHTML = '<div class="logo">' + LOGO + '<span>Ma Poissonnerie</span></div>' +
-    NAV.map(function (n) { return '<button class="nav" data-v="' + n[0] + '">' + icon(n[0]) + n[1] + '</button>'; }).join('') +
+    NAV.map(function (n) { return '<button class="nav" data-v="' + n[0] + '">' + icon(n[0]) + n[1] + (n[0] === 'reappro' ? '<span class="nb" data-nb="reappro" style="display:none"></span>' : '') + '</button>'; }).join('') +
     '<div class="sp"></div><button class="nav" id="theme">' + icon('history') + 'Thème clair / sombre</button>';
   var primary = ['home', 'sell', 'buy', 'stock'];
-  $('#bnav').innerHTML = primary.map(function (k) { var n = NAV.filter(function (x) { return x[0] === k; })[0]; return '<button data-v="' + k + '">' + icon(k) + n[1] + '</button>'; }).join('') +
+  $('#bnav').innerHTML = primary.map(function (k) { var n = NAV.filter(function (x) { return x[0] === k; })[0]; return '<button data-v="' + k + '">' + icon(k) + n[1] + (k === 'stock' ? '<span class="nb" data-nb="stock" style="display:none"></span>' : '') + '</button>'; }).join('') +
     '<button data-v="more">' + icon('more') + 'Plus</button>';
   $$('[data-v]').forEach(function (b) { b.onclick = function () { go(b.dataset.v); }; });
   $('#theme').onclick = function () { var r = document.documentElement, dark = r.dataset.theme === 'dark' || (!r.dataset.theme && matchMedia('(prefers-color-scheme: dark)').matches); r.dataset.theme = dark ? 'light' : 'dark'; try { localStorage.setItem('theme', r.dataset.theme); } catch (e) {} };
   try { var t = localStorage.getItem('theme'); if (t) document.documentElement.dataset.theme = t; } catch (e) {}
 }
 function go(v) {
+  if (v === 'reappro') { S.stockTab = 'reappro'; v = 'stock'; }
+  else if (v === 'stock') S.stockTab = 'dispo';
   S.view = v; S.cartOpen = false;
-  var sub = ['more', 'products', 'expenses', 'reports', 'history'].indexOf(v) >= 0;
-  $$('#side [data-v]').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v); });
-  $$('#bnav [data-v]').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v || (sub && b.dataset.v === 'more')); });
+  updateNavActive();
   window.scrollTo(0, 0); render();
+}
+function updateNavActive() {
+  var v = S.view, sub = ['more', 'products', 'expenses', 'reports', 'history'].indexOf(v) >= 0, key = v === 'stock' && S.stockTab === 'reappro' ? 'reappro' : v;
+  $$('#side [data-v]').forEach(function (b) { b.classList.toggle('on', b.dataset.v === key); });
+  $$('#bnav [data-v]').forEach(function (b) { b.classList.toggle('on', b.dataset.v === v || (sub && b.dataset.v === 'more')); });
+}
+function updateBadges() {
+  if (!S.data) return;
+  var R = S.data.dashboard.reappro, n = R.urgent + R.bientot;
+  $$('.nb').forEach(function (el) { el.textContent = n > 99 ? '99+' : n; el.style.display = n ? '' : 'none'; });
 }
 function render() {
   var v = S.view, m = $('#main');
   if (!S.data) { m.innerHTML = '<div class="skel"></div>'; return; }
+  updateBadges();
   var fn = { home: vHome, sell: vSell, buy: vBuy, stock: vStock, products: vProducts, expenses: vExpenses, reports: vReports, history: vHistory, more: vMore }[v];
   m.innerHTML = ''; var wrap = document.createElement('div'); wrap.className = 'view'; m.appendChild(wrap);
   fn(wrap);
@@ -332,7 +350,7 @@ function head(title, sub, right) {
   return '<div class="top"><div><h1>' + title + '</h1>' + (sub ? '<div class="sub">' + sub + '</div>' : '') + '</div>' + (right || '') + '</div>';
 }
 function refresh(keepView) {
-  return api('bootstrap', { today: today() }).then(function (d) { S.data = d; if (!keepView) render(); return d; });
+  return api('bootstrap', { today: today() }).then(function (d) { S.data = d; updateBadges(); if (!keepView) render(); return d; });
 }
 function prodById(id) { return S.data.produits.filter(function (p) { return p.id === id; })[0]; }
 function stockById(id) { return S.data.stock.filter(function (p) { return p.id === id; })[0]; }
@@ -343,8 +361,10 @@ function vHome(w) {
   var d = S.data.dashboard, j = d.jour.totaux, h = d.hier;
   function delta(a, b) { if (!b) return '<div class="d">' + (a ? 'Pas de comparaison' : '') + '</div>'; var p = Math.round((a - b) / Math.abs(b) * 100); return '<div class="d ' + (p >= 0 ? 'up' : 'down') + '">' + (p >= 0 ? '▲ +' : '▼ ') + p + ' % vs veille</div>'; }
   var week = aggregate(d.semaine.jours.length ? fillDays(d.semaine.jours, addDays(d.today, -6), d.today) : fillDays([], addDays(d.today, -6), d.today));
-  var top = d.jour.produits.slice(0, 5);
-  w.innerHTML = head('Bonjour 👋', frDate(d.today), '<button class="btn" id="goSell">' + icon('sell') + 'Nouvelle vente</button>') +
+  var top = d.jour.produits.slice(0, 5), R = d.reappro, haveStock = S.data.stock.some(function (x) { return x.stock > 0; });
+  var warn = (!haveStock ? bannerHtml('Votre <b>stock n\'est pas encore enregistré</b> : faites l\'inventaire de départ pour savoir ce qui est disponible et ce qu\'il faut racheter.', 'Faire l\'inventaire', 'inventaire') : '') +
+    (d.negatifs ? bannerHtml('<b>' + d.negatifs + ' produit(s) en stock négatif</b> (ventes sans stock enregistré).', 'Corriger', 'inventaire') : '');
+  w.innerHTML = head('Bonjour 👋', frDate(d.today), '<button class="btn" id="goSell">' + icon('sell') + 'Nouvelle vente</button>') + warn +
     '<div class="grid kpis">' +
       kpi("Chiffre d'affaires du jour", j.ca, 'var(--sales)', delta(j.ca, h.ca)) +
       kpi('Bénéfice brut du jour', j.marge, 'var(--profit)', '<div class="d">Marge ' + j.tauxMarge + ' %</div>') +
@@ -354,8 +374,9 @@ function vHome(w) {
     '<div class="grid two" style="margin-top:14px">' +
       '<div class="card"><h2>7 derniers jours</h2><div class="hint">Chiffre d\'affaires et bénéfice net par jour (FCFA)</div>' +
         barChart(week.labels, [{ name: "Chiffre d'affaires", color: 'var(--sales)', values: week.rows.map(function (r) { return r.ca; }) }, { name: 'Bénéfice net', color: 'var(--net)', values: week.rows.map(function (r) { return r.net; }) }], { title: '7 derniers jours' }) + '</div>' +
-      '<div class="card"><h2>Alertes stock</h2><div class="hint">Produits en rupture ou sous le seuil</div>' +
-        (d.alertes.length ? d.alertes.map(function (a) { return '<div class="alert"><span>' + esc(a.nom) + '</span><span class="badge ' + a.statut + '">' + qty(a.stock) + ' ' + esc(a.unite) + '</span></div>'; }).join('') : '<div class="empty">Aucune alerte 🎉</div>') + '</div>' +
+      '<div class="card"><h2>À racheter</h2><div class="hint">' + (R.urgent + R.bientot ? '<b>' + R.urgent + '</b> urgent(s) · <b>' + R.bientot + '</b> bientôt · budget estimé <b>' + money(R.budget) + '</b>' : 'Produits dont le stock devient bas selon vos ventes') + '</div>' +
+        (R.top.length ? R.top.map(function (a) { var q = a.reappro.cartons > 0 ? qty(a.reappro.cartons) + ' ' + (a.unite === 'kg' ? 'sac(s)' : 'carton(s)') : qty(a.reappro.qteArrondie) + ' ' + esc(a.unite); return '<div class="alert"><span>' + esc(a.nom) + '<br><small style="color:var(--muted)">reste ' + qty(a.stock) + ' ' + esc(a.unite) + (a.couverture !== null && a.stock > 0 ? ' · ' + qty(a.couverture) + ' j' : '') + '</small></span><span class="badge ' + (a.reappro.niveau === 'urgent' ? 'rupture' : 'bas') + '">acheter ' + q + '</span></div>'; }).join('') + '<button class="btn sm" id="goReap" style="margin-top:10px">Voir toute la liste d\'achats</button>'
+          : '<div class="empty">' + (haveStock ? 'Rien à acheter pour l\'instant 🎉' : 'Enregistrez d\'abord votre stock (Stock > Inventaire).') + '</div>') + '</div>' +
     '</div>' +
     '<div class="grid two" style="margin-top:14px">' +
       '<div class="card"><h2>Meilleures ventes du jour</h2><div class="hint">Par chiffre d\'affaires</div>' + (top.length ? hBars(top, 'var(--sales)', 'ca', 'produit', j.ca) : '<div class="empty">Aucune vente enregistrée ce jour.</div>') + '</div>' +
@@ -370,6 +391,8 @@ function vHome(w) {
       '</div>' +
     '</div>';
   $('#goSell', w).onclick = function () { go('sell'); };
+  bindBanners(w, w);
+  var gr = $('#goReap', w); if (gr) gr.onclick = function () { go('reappro'); };
   $$('.kpi .v', w).forEach(function (el) { countUp(el, +el.dataset.v); });
 }
 function kpi(label, value, color, extra) {
@@ -427,6 +450,11 @@ function setLineMode(l, mode) {
   if (mode === 'sac') { l.kgSac = l.kgSac || p.kgSac || ''; l.qte = 1; l.pu = p.prixVente && l.kgSac ? Math.round(p.prixVente * l.kgSac) : 0; }
   else { l.qte = 1; l.pu = p.prixVente || 0; }
 }
+function lineHint(l) {
+  var s = stockById(l.id), p = prodById(l.id); if (!s || !p) return '';
+  var need = l.qte * lineKg(l), left = s.stock;
+  return need > left + 1e-9 ? '<span style="color:var(--bad);font-weight:700">Stock insuffisant : il reste ' + qty(left) + ' ' + esc(p.unite) + '</span>' : 'Stock : ' + qty(left) + ' ' + esc(p.unite) + ' · après vente : ' + qty(Math.round((left - need) * 1000) / 1000);
+}
 function drawCart() {
   var c = $('#cart'); if (!c) return;
   var t = cartTotals();
@@ -436,7 +464,7 @@ function drawCart() {
   c.innerHTML = '<div style="display:flex;justify-content:space-between;align-items:center"><h2>Panier</h2>' + (window.innerWidth <= 900 ? '<button class="btn sm ghost" id="cclose">Fermer ✕</button>' : '') + '</div>' +
     (S.cart.length ? '<div class="hint">Quantité et prix modifiables</div>' + S.cart.map(function (l) {
       var p = prodById(l.id), pw = packWords(p), sac = l.mode === 'sac', canSac = p.unite === 'kg' || p.kgSac > 0;
-      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + (sac ? pw.pack + '(s) · prix du ' + pw.pack : esc(p.unite) + ' · prix unitaire') + '</div></div>' +
+      return '<div class="line" data-id="' + l.id + '"><div class="nm">' + esc(p.nom) + '<div style="font-size:12px;color:var(--muted);font-weight:400">' + (sac ? pw.pack + '(s) · prix du ' + pw.pack : esc(p.unite) + ' · prix unitaire') + '</div><div class="lw" style="font-size:12px;color:var(--muted);font-weight:400">' + lineHint(l) + '</div></div>' +
         '<input class="qt" type="number" inputmode="decimal" step="any" min="0" value="' + l.qte + '" aria-label="Quantité"><input class="pu" type="number" inputmode="decimal" step="any" min="0" value="' + l.pu + '" aria-label="Prix unitaire"><button class="x" aria-label="Retirer">×</button>' +
         (canSac ? '<div class="sacrow"><button class="chip sm' + (!sac ? ' on' : '') + '" data-m="kg">' + (pw.kg ? 'Au kilo' : 'À l\'unité') + '</button><button class="chip sm' + (sac ? ' on' : '') + '" data-m="sac">Au ' + pw.pack + '</button>' +
           (sac ? '<label>' + (pw.kg ? 'Poids du sac (kg)' : 'Contenu du carton') + '<input class="kg" type="number" inputmode="decimal" step="any" min="0" value="' + (l.kgSac || '') + '" placeholder="à saisir"></label>' + (parseFloat(l.kgSac) ? '<span class="eq">= ' + qty(l.qte * l.kgSac) + ' ' + esc(p.unite) + '</span>' : '') : '') + '</div>' : '') + '</div>';
@@ -451,11 +479,11 @@ function drawCart() {
   var cc = $('#cclose', c); if (cc) cc.onclick = function () { S.cartOpen = false; drawCart(); };
   $$('.line', c).forEach(function (row) {
     var l = S.cart.filter(function (x) { return x.id === row.dataset.id; })[0];
-    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; var eq = $('.eq', row); if (eq && l.kgSac) eq.textContent = '= ' + qty(l.qte * l.kgSac) + ' ' + prodById(l.id).unite; softTotals(); };
+    $('.qt', row).oninput = function (e) { l.qte = parseFloat(String(e.target.value).replace(',', '.')) || 0; $('.lw', row).innerHTML = lineHint(l); var eq = $('.eq', row); if (eq && l.kgSac) eq.textContent = '= ' + qty(l.qte * l.kgSac) + ' ' + prodById(l.id).unite; softTotals(); };
     $('.pu', row).oninput = function (e) { l.pu = parseFloat(String(e.target.value).replace(',', '.')) || 0; l.priceTouched = true; softTotals(); };
     $('.x', row).onclick = function () { S.cart = S.cart.filter(function (x) { return x !== l; }); drawCart(); };
     $$('[data-m]', row).forEach(function (b) { b.onclick = function () { if (l.mode !== b.dataset.m) { setLineMode(l, b.dataset.m); drawCart(); } }; });
-    var kg = $('.kg', row); if (kg) kg.oninput = function (e) { l.kgSac = parseFloat(String(e.target.value).replace(',', '.')) || ''; var p = prodById(l.id); if (p.prixVente && l.kgSac && !l.priceTouched) { l.pu = Math.round(p.prixVente * l.kgSac); $('.pu', row).value = l.pu; } var eq = $('.eq', row); if (eq) eq.textContent = l.kgSac ? '= ' + qty(l.qte * l.kgSac) + ' ' + p.unite : ''; softTotals(); };
+    var kg = $('.kg', row); if (kg) kg.oninput = function (e) { l.kgSac = parseFloat(String(e.target.value).replace(',', '.')) || ''; var p = prodById(l.id); if (p.prixVente && l.kgSac && !l.priceTouched) { l.pu = Math.round(p.prixVente * l.kgSac); $('.pu', row).value = l.pu; } var eq = $('.eq', row); if (eq) eq.textContent = l.kgSac ? '= ' + qty(l.qte * l.kgSac) + ' ' + p.unite : ''; $('.lw', row).innerHTML = lineHint(l); softTotals(); };
   });
   $$('[data-p]', c).forEach(function (b) { b.onclick = function () { S.pay = b.dataset.p; drawCart(); }; });
   var cn = $('#cnote', c); if (cn) cn.oninput = function (e) { S.note = e.target.value; };
@@ -518,6 +546,17 @@ function recentPurchases() {
   }).catch(function (e) { var el = $('#blist'); if (el) el.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
 }
 
+/** Récapitulatif du cumul : stock avant, entrée, stock après, couverture. */
+function stockRecap(before, ent, title) {
+  var ids = Object.keys(ent);
+  modal('<h2>✅ ' + esc(title) + '</h2><div class="hint">Stock cumulé : produits déjà en boutique + nouvelles entrées</div><div class="scroll"><table><thead><tr><th>Produit</th><th class="n">Avant</th><th class="n">Entrée</th><th class="n">Stock maintenant</th><th class="n">Couverture</th></tr></thead><tbody>' +
+    ids.map(function (id) {
+      var s = stockById(id), p = prodById(id);
+      return '<tr><td><b>' + esc(p.nom) + '</b></td><td class="n">' + qty(before[id]) + '</td><td class="n" style="color:var(--ok)"><b>+' + qty(ent[id]) + '</b></td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(p.unite) + packEq(s) + '</td><td class="n">' + (s.couverture !== null && s.stock > 0 ? qty(s.couverture) + ' j' : '—') + '</td></tr>';
+    }).join('') + '</tbody></table></div><button class="btn big" id="rok" style="margin-top:12px">OK</button>');
+  $('#rok').onclick = function () { closeModal(); render(); };
+}
+
 /* ----- Bon d'achat : recopier un reçu de grossiste ligne par ligne ----- */
 function bonCalc(l) {
   var p = S.data.produits.filter(function (x) { return x.actif && norm(x.nom) === norm(l.name); })[0];
@@ -532,13 +571,21 @@ function bonCalc(l) {
   if (!r.ok) r.msg = 'Indiquez la quantité et le prix.';
   return r;
 }
-function bonLineSummary(l) {
+function bonStockInfo(r, i) {
+  var s = stockById(r.p.id); if (!s) return '';
+  var prior = 0, k, rk;
+  for (k = 0; k < i; k++) { rk = bonCalc(S.bon.lines[k]); if (rk.ok && rk.p.id === r.p.id) prior += rk.qte; }
+  var before = Math.round((s.stock + prior) * 1000) / 1000, after = Math.round((before + r.qte) * 1000) / 1000;
+  return '<div style="margin-top:2px">Stock : <b>' + qty(before) + ' → ' + qty(after) + ' ' + esc(r.p.unite) + '</b>' + (s.venteJour > 0 ? ' (≈ ' + qty(Math.round(after / s.venteJour)) + ' jour(s) de vente)' : '') + (prior ? ' <small>(cumul avec une ligne précédente du même produit)</small>' : '') + '</div>';
+}
+function bonLineSummary(l, i) {
   var r = bonCalc(l); if (r.empty) return '';
   if (!r.ok) return '<span style="color:var(--bad)">' + esc(r.msg) + '</span>';
   var u = r.p.unite, pv = r.p.prixVente;
   return '= <b>' + qty(r.qte) + ' ' + esc(u) + '</b> · ' + nf2.format(r.pu) + ' F / ' + esc(u) + ' · <b>' + money(r.montant) + '</b>' +
-    (pv > 0 ? ' · vente ' + nf.format(pv) + ' F → bénéfice prévu <b style="color:' + (pv >= r.pu ? 'var(--ok)' : 'var(--bad)') + '">' + money((pv - r.pu) * r.qte) + '</b>' : ' · <span style="color:var(--warn)">prix de vente non renseigné</span>');
+    (pv > 0 ? ' · vente ' + nf.format(pv) + ' F → bénéfice prévu <b style="color:' + (pv >= r.pu ? 'var(--ok)' : 'var(--bad)') + '">' + money((pv - r.pu) * r.qte) + '</b>' : ' · <span style="color:var(--warn)">prix de vente non renseigné</span>') + bonStockInfo(r, i);
 }
+function refreshBonSums() { S.bon.lines.forEach(function (l, i) { var e = $('#bs' + i); if (e) e.innerHTML = bonLineSummary(l, i); }); var t = $('#btotbon'); if (t) t.textContent = money(bonTotal()); }
 function bonTotal() { var t = 0; S.bon.lines.forEach(function (l) { var r = bonCalc(l); if (r.ok) t += r.montant; }); return t; }
 function drawBonLines() {
   var box = $('#bl'); if (!box) return;
@@ -548,7 +595,7 @@ function drawBonLines() {
       '<label>Contenu / carton<input class="bn-ct" type="text" inputmode="decimal" placeholder="kg ou unités" value="' + esc(l.ct) + '"></label>' +
       '<label>Prix<input class="bn-prix" type="text" inputmode="decimal" value="' + esc(l.prix) + '"></label>' +
       '<label>Prix indiqué<select class="bn-basis"><option value="carton"' + (l.basis === 'carton' ? ' selected' : '') + '>par carton</option><option value="unite"' + (l.basis === 'unite' ? ' selected' : '') + '>par unité/kg</option><option value="total"' + (l.basis === 'total' ? ' selected' : '') + '>total ligne</option></select></label></div>' +
-      '<div class="bsum" id="bs' + i + '">' + bonLineSummary(l) + '</div></div>';
+      '<div class="bsum" id="bs' + i + '">' + bonLineSummary(l, i) + '</div></div>';
   }).join('');
   var t = $('#btotbon'); if (t) t.textContent = money(bonTotal());
 }
@@ -572,7 +619,7 @@ function vBuyBon(w) {
   box.addEventListener('input', function (e) {
     var o = lineOf(e); if (!o) return; var l = B.lines[o.i], c = e.target.classList;
     if (c.contains('bn-name')) l.name = e.target.value; else if (c.contains('bn-nb')) l.nb = e.target.value; else if (c.contains('bn-ct')) l.ct = e.target.value; else if (c.contains('bn-prix')) l.prix = e.target.value;
-    $('#bs' + o.i).innerHTML = bonLineSummary(l); $('#btotbon').textContent = money(bonTotal());
+    refreshBonSums();
   });
   box.addEventListener('change', function (e) {
     var o = lineOf(e); if (!o) return; var l = B.lines[o.i];
@@ -581,17 +628,18 @@ function vBuyBon(w) {
       var r = bonCalc(l); if (r.p && !num(l.ct) && r.p.kgSac > 0) { l.ct = String(r.p.kgSac); $('.bn-ct', o.el).value = l.ct; }
       if (r.p) e.target.title = 'Dernier prix d\'achat : ' + nf2.format(r.p.prixAchat) + ' F / ' + r.p.unite;
     }
-    $('#bs' + o.i).innerHTML = bonLineSummary(l); $('#btotbon').textContent = money(bonTotal());
+    refreshBonSums();
   });
   box.addEventListener('click', function (e) {
     if (!e.target.classList.contains('x')) return; var o = lineOf(e); if (!o) return;
     B.lines.splice(o.i, 1); if (!B.lines.length) B.lines.push(newBonLine()); drawBonLines();
   });
   $('#bsavebon').onclick = function () {
-    var out = [], err = '';
+    var out = [], err = '', ent = {}, before = {};
     B.lines.forEach(function (l, i) {
       var r = bonCalc(l); if (r.empty || err) return;
       if (!r.ok) { err = 'Ligne ' + (i + 1) + ' : ' + r.msg; return; }
+      ent[r.p.id] = (ent[r.p.id] || 0) + r.qte; if (!(r.p.id in before)) before[r.p.id] = stockById(r.p.id) ? stockById(r.p.id).stock : 0;
       var o = { produitId: r.p.id };
       if (r.ct > 0) { o.nbSacs = r.nb; o.kgSac = r.ct; } else { o.qte = r.nb; }
       if (l.basis === 'carton') o.prixSac = num(l.prix); else if (l.basis === 'unite') o.pu = num(l.prix); else o.montant = num(l.prix);
@@ -601,7 +649,8 @@ function vBuyBon(w) {
     if (!out.length) return toast('Ajoutez au moins une ligne.', true);
     busy($('#bsavebon'), function () {
       return api('addPurchases', { date: B.date, fournisseur: B.fournisseur, lines: out }).then(function (r) {
-        S.bon = null; toast('✅ Bon d\'achat enregistré : ' + r.lignes + ' ligne(s), ' + money(r.total)); return refresh();
+        S.bon = null;
+        return refresh(true).then(function () { stockRecap(before, ent, 'Bon d\'achat enregistré : ' + r.lignes + ' ligne(s), ' + money(r.total)); });
       });
     });
   };
@@ -660,6 +709,8 @@ function vBuySimple(w) {
     h += '<div class="sub2"><span>Quantité totale achetée</span><b>' + qty(x.qte) + ' ' + esc(u) + (mode === 'sacs' && x.nb ? ' (' + qty(x.nb) + ' × ' + qty(x.kg) + ')' : '') + '</b></div>';
     h += '<div class="sub2"><span>Prix d\'achat par ' + (pw.kg ? 'kilo' : esc(u)) + '</span><b>' + nf2.format(x.pu) + ' FCFA</b></div>';
     if (mode === 'sacs' && x.kg && x.pu) h += '<div class="sub2"><span>Prix d\'un ' + pw.pack + '</span><b>' + money(x.pu * x.kg) + '</b></div>';
+    var cs = x.p ? stockById(x.p.id) : null;
+    if (cs && x.qte > 0) h += '<div class="sub2"><span>Stock actuel → après cet achat</span><b>' + qty(cs.stock) + ' → ' + qty(Math.round((cs.stock + x.qte) * 1000) / 1000) + ' ' + esc(u) + '</b></div>';
     h += '<div class="tot" style="font-size:18px"><span>Montant de l\'achat</span><span>' + money(x.montant) + '</span></div>';
     if (x.pu && sell) h += '<div class="sub2" style="margin-top:6px"><span>Marge théorique par ' + (pw.kg ? 'kilo' : esc(u)) + '</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + nf2.format(sell - x.pu) + ' FCFA (' + Math.round((sell - x.pu) / sell * 100) + ' %)</b></div>' +
       '<div class="sub2"><span>Bénéfice prévu sur cet achat</span><b style="color:' + (sell - x.pu >= 0 ? 'var(--ok)' : 'var(--bad)') + '">' + money((sell - x.pu) * x.qte) + '</b></div>';
@@ -694,43 +745,289 @@ function vBuySimple(w) {
     var a = { date: $('#bd').value, produitId: x.p.id, prixVente: $('#bsell').value, fournisseur: $('#bsup').value };
     if (mode === 'sacs') { a.nbSacs = x.nb; a.kgSac = x.kg; if (basis === 'unit') a.pu = x.raw; else if (basis === 'pack') a.prixSac = x.raw; else a.montant = x.raw; }
     else { a.qte = x.qte; if (basis === 'unit') a.pu = x.raw; else a.montant = x.raw; }
-    busy($('#bsave'), function () { return api('addPurchase', a).then(function () { toast('✅ Achat enregistré : ' + (mode === 'sacs' ? qty(x.nb) + ' ' + pw.pack + '(s) = ' + qty(x.qte) + ' ' + x.p.unite : qty(x.qte) + ' ' + x.p.unite)); return refresh(); }); });
+    var bef = {}, en = {}; bef[x.p.id] = stockById(x.p.id) ? stockById(x.p.id).stock : 0; en[x.p.id] = x.qte;
+    busy($('#bsave'), function () { return api('addPurchase', a).then(function () { return refresh(true); }).then(function () { stockRecap(bef, en, 'Achat enregistré : ' + (mode === 'sacs' ? qty(x.nb) + ' ' + pw.pack + '(s) = ' + qty(x.qte) + ' ' + x.p.unite : qty(x.qte) + ' ' + x.p.unite)); }); });
   };
   bindForm();
   recentPurchases();
 }
 
-/* ===================== Stock ===================== */
+/* ===================== Stock : disponible, à acheter, inventaire ===================== */
+function stockBadge(s) {
+  var lab = { ok: 'OK', rupture: 'Rupture', negatif: 'Négatif', neutre: '—' }[s.statut], cls = s.statut;
+  if (s.statut === 'bas') { var u = s.reappro && s.reappro.niveau === 'urgent'; lab = u ? 'Urgent' : 'À racheter'; cls = u ? 'rupture' : 'bas'; }
+  if (s.statut === 'negatif') cls = 'rupture';
+  return '<span class="badge ' + cls + '">' + lab + '</span>';
+}
+function packEq(s) {
+  return s.sacs != null && s.stock > 0 ? '<div style="font-size:12px;color:var(--muted)">≈ ' + qty(s.sacs) + (s.unite === 'kg' ? ' sac(s) de ' + qty(s.kgSac) + ' kg' : ' carton(s) de ' + qty(s.kgSac)) + '</div>' : '';
+}
+function bannerHtml(text, btn, act) {
+  return '<div class="banner act"><span>' + text + '</span>' + (btn ? '<button class="btn sm" data-act="' + act + '">' + btn + '</button>' : '') + '</div>';
+}
+function bindBanners(root, w) {
+  $$('[data-act]', root).forEach(function (b) { b.onclick = function () {
+    if (b.dataset.act === 'prod') { go('products'); return; }
+    S.stockTab = b.dataset.act; S.view = 'stock'; updateNavActive(); vStock(w);
+  }; });
+}
 function vStock(w) {
-  var st = S.data.stock.filter(function (s) { return s.actif; });
-  var rup = st.filter(function (s) { return s.statut === 'rupture' && (s.entrees || s.sorties); }).length, bas = st.filter(function (s) { return s.statut === 'bas'; }).length;
-  w.innerHTML = head('Stock', 'Quantités calculées : achats − ventes − pertes') +
-    '<div class="grid kpis">' + kpi('Valeur du stock (au coût moyen)', S.data.dashboard.valeurStock, 'var(--sales)') +
-    '<div class="card kpi" style="--c:var(--warn)"><div class="l">Stock bas</div><div class="v">' + bas + ' <small>produits</small></div></div>' +
-    '<div class="card kpi" style="--c:var(--bad)"><div class="l">En rupture (déjà mouvementés)</div><div class="v">' + rup + ' <small>produits</small></div></div></div>' +
-    '<div style="margin:14px 0 8px"><input id="sq" placeholder="🔍 Rechercher…" value="' + esc(S.stockQ) + '"></div>' +
-    '<div class="chips">' + [['tous', 'Tous'], ['mouv', 'Avec mouvements'], ['alerte', 'Alertes'], ['rupture', 'Ruptures']].map(function (f) { return '<button class="chip' + (S.stockFilter === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
+  var tabs = [['dispo', 'Disponible'], ['reappro', 'À acheter'], ['inventaire', 'Inventaire']], R = S.data.dashboard.reappro, n = R.urgent + R.bientot;
+  w.innerHTML = head('Stock', 'Ce qui est disponible, ce qu\'il faut racheter, et le comptage de la boutique') +
+    '<div class="chips" id="stabs">' + tabs.map(function (t) { return '<button class="chip' + (S.stockTab === t[0] ? ' on' : '') + '" data-t="' + t[0] + '">' + t[1] + (t[0] === 'reappro' && n ? ' <span class="cnt">' + n + '</span>' : '') + '</button>'; }).join('') + '</div><div id="sbody"></div>';
+  $$('#stabs [data-t]', w).forEach(function (b) { b.onclick = function () { S.stockTab = b.dataset.t; updateNavActive(); vStock(w); }; });
+  ({ dispo: stockDispo, reappro: stockReappro, inventaire: stockInventaire }[S.stockTab] || stockDispo)($('#sbody', w), w);
+}
+
+/* ----- Disponible ----- */
+function stockDispo(c, w) {
+  var D = S.data.dashboard, st = S.data.stock.filter(function (s) { return s.actif; }), have = st.filter(function (s) { return s.stock > 0; }).length, R = D.reappro, warn = '';
+  if (!have) warn += bannerHtml('Aucun stock n\'est encore enregistré. Faites d\'abord <b>l\'inventaire de départ</b> : comptez ce que vous avez en boutique.', 'Faire l\'inventaire', 'inventaire');
+  if (D.negatifs) warn += bannerHtml('<b>' + D.negatifs + ' produit(s) en stock négatif</b> : des ventes ont été saisies sans stock enregistré. L\'inventaire corrige cela.', 'Corriger', 'inventaire');
+  if (D.coutsManquants) warn += bannerHtml('<b>' + D.coutsManquants + ' produit(s) en stock sans prix d\'achat</b> : leur bénéfice sera faussé. Renseignez le prix d\'achat.', 'Voir les produits', 'prod');
+  var cats = ['Toutes'].concat(S.data.categories);
+  c.innerHTML = warn +
+    '<div class="grid kpis">' + kpi('Valeur du stock (au coût moyen)', D.valeurStock, 'var(--sales)') +
+    '<div class="card kpi" style="--c:var(--net)"><div class="l">Produits disponibles</div><div class="v">' + have + ' <small>sur ' + st.length + '</small></div></div>' +
+    '<div class="card kpi" style="--c:var(--warn)"><div class="l">À racheter</div><div class="v">' + (R.urgent + R.bientot) + ' <small>produits</small></div><div class="d">' + (R.urgent ? R.urgent + ' urgent(s) · ' : '') + 'budget estimé ' + money(R.budget) + '</div></div></div>' +
+    '<div class="row" style="margin:14px 0 6px"><input id="sq" placeholder="🔍 Rechercher un produit…" value="' + esc(S.stockQ) + '" style="flex:2 1 220px">' +
+    '<select id="scat" style="flex:1 1 160px">' + cats.map(function (x) { return '<option' + (S.stockCat === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select>' +
+    '<select id="ssort" style="flex:1 1 150px"><option value="nom"' + (S.stockSort === 'nom' ? ' selected' : '') + '>Trier : nom</option><option value="stock"' + (S.stockSort === 'stock' ? ' selected' : '') + '>Trier : stock croissant</option><option value="couv"' + (S.stockSort === 'couv' ? ' selected' : '') + '>Trier : couverture croissante</option></select></div>' +
+    '<div class="chips">' + [['dispo', 'Disponibles'], ['alerte', 'À racheter / rupture'], ['rupture', 'Ruptures et négatifs'], ['tous', 'Tous'], ['neutre', 'Jamais mouvementés']].map(function (f) { return '<button class="chip' + (S.stockFilter === f[0] ? ' on' : '') + '" data-f="' + f[0] + '">' + f[1] + '</button>'; }).join('') + '</div>' +
     '<div class="card scroll" id="stbl"></div>';
+  bindBanners(c, w);
   function draw() {
     var q = norm(S.stockQ), f = S.stockFilter;
     var rows = st.filter(function (s) {
+      if (S.stockCat !== 'Toutes' && s.categorie !== S.stockCat) return false;
       if (q && norm(s.nom + ' ' + s.categorie).indexOf(q) < 0) return false;
-      if (f === 'mouv') return s.entrees || s.sorties;
-      if (f === 'alerte') return (s.statut === 'bas' || s.statut === 'rupture');
-      if (f === 'rupture') return s.statut === 'rupture';
+      if (f === 'dispo') return s.stock > 0;
+      if (f === 'alerte') return s.statut === 'bas' || s.statut === 'rupture' || s.statut === 'negatif';
+      if (f === 'rupture') return s.statut === 'rupture' || s.statut === 'negatif';
+      if (f === 'neutre') return s.statut === 'neutre';
       return true;
     });
-    $('#stbl').innerHTML = rows.length ? '<table><thead><tr><th>Produit</th><th class="n">Entrées</th><th class="n">Ventes</th><th class="n">Pertes</th><th class="n">Stock</th><th class="n">Coût moyen</th><th class="n">Valeur</th><th>État</th><th></th></tr></thead><tbody>' +
+    rows.sort(function (a, b) {
+      if (S.stockSort === 'stock') return a.stock - b.stock || a.nom.localeCompare(b.nom);
+      if (S.stockSort === 'couv') return (a.couverture === null ? 1e9 : a.couverture) - (b.couverture === null ? 1e9 : b.couverture) || a.nom.localeCompare(b.nom);
+      return a.nom.localeCompare(b.nom);
+    });
+    $('#stbl').innerHTML = rows.length ? '<table><thead><tr><th>Produit</th><th class="n">Stock</th><th class="n hide-m">Vente / jour</th><th class="n">Couverture</th><th>État</th><th></th></tr></thead><tbody>' +
       rows.slice(0, 300).map(function (s) {
-        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n">' + qty(s.entrees) + '</td><td class="n">' + qty(s.sorties) + '</td><td class="n">' + qty(s.pertes) + '</td><td class="n"><b>' + qty(s.stock) + '</b> ' + esc(s.unite) + (s.sacs != null && s.stock > 0 ? '<div style="font-size:12px;color:var(--muted)">≈ ' + qty(s.sacs) + (s.unite === 'kg' ? ' sac(s) de ' + qty(s.kgSac) + ' kg' : ' carton(s) de ' + qty(s.kgSac)) + '</div>' : '') + '</td><td class="n">' + nf.format(s.coutMoyen) + '</td><td class="n">' + nf.format(s.valeur) + '</td><td><span class="badge ' + s.statut + '">' + { ok: 'OK', bas: 'Stock bas', rupture: 'Rupture', neutre: '—' }[s.statut] + '</span></td><td><button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
-      }).join('') + '</tbody></table>' : '<div class="empty">Aucun produit.</div>';
-    $$('[data-loss]', w).forEach(function (b) { b.onclick = function () { lossModal(b.dataset.loss); }; });
+        return '<tr><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + '</div></td><td class="n"><b style="' + (s.stock < 0 ? 'color:var(--bad)' : '') + '">' + qty(s.stock) + '</b> ' + esc(s.unite) + packEq(s) + '</td>' +
+          '<td class="n hide-m">' + (s.venteJour > 0 ? qty(Math.round(s.venteJour * 10) / 10) : '—') + '</td><td class="n">' + (s.couverture !== null && s.stock > 0 ? qty(s.couverture) + ' j' : '—') + '</td><td>' + stockBadge(s) + '</td>' +
+          '<td style="white-space:nowrap"><button class="btn sm sec" data-card="' + s.id + '">Fiche</button> <button class="btn sm ghost" data-loss="' + s.id + '">Perte</button></td></tr>';
+      }).join('') + '</tbody></table>' + (rows.length > 300 ? '<div class="empty">Affinez la recherche (' + rows.length + ' résultats).</div>' : '') :
+      '<div class="empty">' + (have ? 'Aucun produit ne correspond à ce filtre.' : 'Aucun stock enregistré pour le moment.') + '</div>';
+    $$('[data-loss]', c).forEach(function (b) { b.onclick = function () { lossModal(b.dataset.loss); }; });
+    $$('[data-card]', c).forEach(function (b) { b.onclick = function () { stockCardModal(b.dataset.card); }; });
   }
   $('#sq').oninput = function (e) { S.stockQ = e.target.value; draw(); };
-  $$('[data-f]', w).forEach(function (b) { b.onclick = function () { S.stockFilter = b.dataset.f; $$('[data-f]', w).forEach(function (x) { x.classList.toggle('on', x === b); }); draw(); }; });
-  $$('.kpi .v[data-v]', w).forEach(function (el) { countUp(el, +el.dataset.v); });
+  $('#scat').onchange = function (e) { S.stockCat = e.target.value; draw(); };
+  $('#ssort').onchange = function (e) { S.stockSort = e.target.value; draw(); };
+  $$('[data-f]', c).forEach(function (b) { b.onclick = function () { S.stockFilter = b.dataset.f; $$('[data-f]', c).forEach(function (x) { x.classList.toggle('on', x === b); }); draw(); }; });
+  $$('.kpi .v[data-v]', c).forEach(function (el) { countUp(el, +el.dataset.v); });
   draw();
 }
+
+/* ----- À acheter ----- */
+function reapPacks(it) { return it.kgSac > 0; }
+function reapQty(it) { var o = S.reapQty[it.id]; if (o !== undefined && o !== '') return num(o); return reapPacks(it) ? it.reappro.cartons : it.reappro.qteArrondie; }
+function reapUnits(it) { return reapPacks(it) ? reapQty(it) * it.kgSac : reapQty(it); }
+function reapCost(it) { return reapUnits(it) * it.reappro.coutUnitaire; }
+function reapLine(it) {
+  var q = reapQty(it), u = reapUnits(it);
+  return it.nom + ' : ' + (reapPacks(it) ? qty(q) + ' ' + (it.unite === 'kg' ? 'sac(s)' : 'carton(s)') + ' (' + qty(u) + ' ' + it.unite + ')' : qty(u) + ' ' + it.unite) + (reapCost(it) > 0 ? ' ≈ ' + money(reapCost(it)) : '');
+}
+function reapSelected() { return (S.reorder ? S.reorder.items : []).filter(function (it) { return S.reapSel[it.id] !== false && reapQty(it) > 0; }); }
+function reapText() {
+  var sel = reapSelected(), g = {}, total = 0;
+  sel.forEach(function (it) { var k = it.dernierFournisseur || 'Fournisseur à choisir'; (g[k] = g[k] || []).push(it); total += reapCost(it); });
+  var keys = Object.keys(g).sort(function (a, b) { return (a === 'Fournisseur à choisir') - (b === 'Fournisseur à choisir') || a.localeCompare(b); });
+  return 'Liste d\'achats du ' + frDate(today()) + '\n' + keys.map(function (k) { return '\n' + k + '\n' + g[k].map(function (it) { return '- ' + reapLine(it); }).join('\n'); }).join('\n') + '\n\nTotal estimé : ' + money(total);
+}
+function copyText(t) {
+  try { if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(t).then(function () { return true; }, function () { return fallbackCopy(t); }); } catch (e) {}
+  return Promise.resolve(fallbackCopy(t));
+}
+function fallbackCopy(t) { var a = document.createElement('textarea'); a.value = t; a.style.cssText = 'position:fixed;opacity:0'; document.body.appendChild(a); a.select(); var ok = false; try { ok = document.execCommand('copy'); } catch (e) {} a.remove(); return ok; }
+function stockReappro(c, w) {
+  c.innerHTML = '<div class="skel"></div>';
+  api('reorder', { today: today() }).then(function (R) { S.reorder = R; drawReappro(c, w); }).catch(function (e) { c.innerHTML = '<div class="empty">' + esc(e.message) + '</div>'; });
+}
+function drawReappro(c, w) {
+  var R = S.reorder, st = R.settings, items = R.items, have = S.data.stock.some(function (s) { return s.stock > 0; });
+  var hint = R.joursObserves < 1 ? 'Aucune vente enregistrée pour l\'instant : les prévisions s\'appuient seulement sur les seuils et stocks cibles saisis sur les fiches produits.' :
+    'Prévisions calculées sur vos <b>' + R.joursObserves + ' jour(s)</b> de ventes enregistrées' + (R.joursObserves < 14 ? ' : encore peu de recul, complétez avec un <b>seuil d\'alerte</b> ou un <b>stock cible</b> sur les produits clés (Produits > Modifier).' : '.');
+  c.innerHTML = (!have ? bannerHtml('Aucun stock n\'est enregistré : sans inventaire de départ, tous les produits vendus apparaissent en rupture.', 'Faire l\'inventaire', 'inventaire') : '') +
+    '<div class="card" style="margin-bottom:12px"><div class="hint" style="margin:0">' + hint + '</div>' +
+    '<details style="margin-top:8px"><summary style="cursor:pointer;font-weight:700;color:var(--brand)">Réglages des prévisions</summary><div class="row" style="margin-top:8px">' +
+    '<label class="f"><span>Jours de ventes à couvrir</span><input id="rs1" type="number" min="1" max="60" value="' + st.joursCible + '"></label>' +
+    '<label class="f"><span>Alerter quand il reste (jours)</span><input id="rs2" type="number" min="1" max="30" value="' + st.delai + '"></label>' +
+    '<label class="f"><span>Période de calcul (jours)</span><input id="rs3" type="number" min="7" max="90" value="' + st.fenetre + '"></label></div>' +
+    '<div class="hint">Quantité proposée = stock cible − stock actuel, arrondie au carton ou sac entier. Stock cible = ventes par jour × jours à couvrir, sauf si vous avez saisi un stock cible sur la fiche produit. Ces réglages sont partagés entre vos appareils.</div>' +
+    '<button class="btn sm" id="rsave">Appliquer</button></details></div>' +
+    '<div class="grid kpis"><div class="card kpi" style="--c:var(--bad)"><div class="l">Urgent</div><div class="v">' + R.urgent + ' <small>produits</small></div><div class="d">rupture ou moins d\'un jour de vente</div></div>' +
+    '<div class="card kpi" style="--c:var(--warn)"><div class="l">Bientôt</div><div class="v">' + R.bientot + ' <small>produits</small></div><div class="d">sous le seuil d\'alerte</div></div>' +
+    '<div class="card kpi" style="--c:var(--sales)"><div class="l">Sélection à acheter</div><div class="v" id="rtot">0 <small>FCFA</small></div><div class="d" id="rcnt"></div></div></div>' +
+    (items.length ? '<div class="row" style="margin:12px 0 6px;gap:8px"><button class="btn sec" id="rall">Tout cocher / décocher</button><button class="btn" id="rbon">Préparer le bon d\'achat</button><button class="btn sec" id="rcopy">Copier la liste</button><button class="btn sec" id="rwa">Envoyer par WhatsApp</button></div>' +
+      '<div class="card scroll" id="rtbl"></div>' : '<div class="card"><div class="empty">Rien à acheter pour l\'instant 🎉<br><small>Les produits apparaissent ici quand leur stock passe sous le seuil ou que la couverture en jours de vente devient courte.</small></div></div>');
+  bindBanners(c, w);
+  $('#rsave', c).onclick = function () {
+    busy($('#rsave', c), function () { return api('saveSettings', { joursCible: $('#rs1').value, delai: $('#rs2').value, fenetre: $('#rs3').value }).then(function () { toast('Réglages enregistrés'); return refresh(true); }).then(function () { stockReappro(c, w); }); });
+  };
+  if (!items.length) return;
+  function drawTable() {
+    $('#rtbl').innerHTML = '<table><thead><tr><th></th><th>Produit</th><th class="n">Stock</th><th class="n hide-m">Vente / jour</th><th class="n">Couverture</th><th class="n">À acheter</th><th class="n">Coût estimé</th><th class="hide-m">Dernier fournisseur</th><th></th></tr></thead><tbody>' +
+      items.map(function (it) {
+        var r = it.reappro, packs = reapPacks(it), qv = reapQty(it);
+        return '<tr data-id="' + it.id + '"><td><input type="checkbox" class="rk" ' + (S.reapSel[it.id] !== false ? 'checked' : '') + ' style="width:20px;height:20px"></td>' +
+          '<td style="min-width:190px"><b>' + esc(it.nom) + '</b><div style="font-size:12px;color:' + (r.niveau === 'urgent' ? 'var(--bad)' : 'var(--warn)') + '">' + esc(r.raison).replace(/(\d)\.(\d)/g, '$1,$2') + '</div></td>' +
+          '<td class="n"><b>' + qty(it.stock) + '</b> ' + esc(it.unite) + '</td><td class="n hide-m">' + (it.venteJour > 0 ? qty(Math.round(it.venteJour * 10) / 10) : '—') + '</td><td class="n">' + (it.couverture !== null && it.stock > 0 ? qty(it.couverture) + ' j' : '—') + '</td>' +
+          '<td class="n" style="min-width:120px"><input class="rq" type="number" inputmode="decimal" step="any" min="0" value="' + qv + '" style="width:76px;text-align:right"> <small>' + (packs ? (it.unite === 'kg' ? 'sac(s)' : 'carton(s)') : esc(it.unite)) + '</small>' +
+          (packs ? '<div class="ru" style="font-size:12px;color:var(--muted)">= ' + qty(reapUnits(it)) + ' ' + esc(it.unite) + '</div>' : '') + '</td>' +
+          '<td class="n rc">' + (reapCost(it) > 0 ? money(reapCost(it)) : '—') + '</td><td class="hide-m">' + esc(it.dernierFournisseur || '—') + '</td><td><button class="btn sm ghost" data-p="' + it.id + '">Seuils</button></td></tr>';
+      }).join('') + '</tbody></table>';
+    totals();
+  }
+  function totals() {
+    var sel = reapSelected(), t = sel.reduce(function (a, it) { return a + reapCost(it); }, 0);
+    $('#rtot').innerHTML = nf.format(Math.round(t)) + ' <small>FCFA</small>'; $('#rcnt').textContent = sel.length + ' ligne(s) cochée(s)';
+  }
+  drawTable();
+  var tb = $('#rtbl');
+  tb.addEventListener('change', function (e) {
+    var tr = e.target.closest('tr'); if (!tr) return; var id = tr.dataset.id, it = items.filter(function (x) { return x.id === id; })[0];
+    if (e.target.classList.contains('rk')) S.reapSel[id] = e.target.checked;
+    if (e.target.classList.contains('rq')) { S.reapQty[id] = e.target.value; $('.rc', tr).textContent = reapCost(it) > 0 ? money(reapCost(it)) : '—'; var ru = $('.ru', tr); if (ru) ru.textContent = '= ' + qty(reapUnits(it)) + ' ' + it.unite; }
+    totals();
+  });
+  tb.addEventListener('input', function (e) { if (e.target.classList.contains('rq')) { var tr = e.target.closest('tr'), id = tr.dataset.id, it = items.filter(function (x) { return x.id === id; })[0]; S.reapQty[id] = e.target.value; $('.rc', tr).textContent = reapCost(it) > 0 ? money(reapCost(it)) : '—'; var ru = $('.ru', tr); if (ru) ru.textContent = '= ' + qty(reapUnits(it)) + ' ' + it.unite; totals(); } });
+  $$('[data-p]', tb).forEach(function (b) { b.onclick = function () { productModal(b.dataset.p); }; });
+  $('#rall', c).onclick = function () { var anyOn = items.some(function (it) { return S.reapSel[it.id] !== false; }); items.forEach(function (it) { S.reapSel[it.id] = !anyOn; }); drawTable(); $$('[data-p]', $('#rtbl')).forEach(function (b) { b.onclick = function () { productModal(b.dataset.p); }; }); };
+  $('#rcopy', c).onclick = function () { if (!reapSelected().length) return toast('Cochez au moins une ligne.', true); copyText(reapText()).then(function (ok) { toast(ok ? '✅ Liste copiée : collez-la dans WhatsApp, un SMS ou un cahier' : 'Copie impossible sur cet appareil', !ok); }); };
+  $('#rwa', c).onclick = function () { if (!reapSelected().length) return toast('Cochez au moins une ligne.', true); var a = document.createElement('a'); a.href = 'https://wa.me/?text=' + encodeURIComponent(reapText()); a.target = '_blank'; a.rel = 'noopener'; document.body.appendChild(a); a.click(); a.remove(); };
+  $('#rbon', c).onclick = function () {
+    var sel = reapSelected(); if (!sel.length) return toast('Cochez au moins une ligne.', true);
+    S.bon = { date: today(), fournisseur: '', lines: sel.map(function (it) {
+      var cu = it.reappro.coutUnitaire;
+      return reapPacks(it) ? { name: it.nom, nb: String(reapQty(it)), ct: String(it.kgSac), prix: cu > 0 ? String(Math.round(cu * it.kgSac)) : '', basis: 'carton' }
+        : { name: it.nom, nb: String(reapQty(it)), ct: '', prix: cu > 0 ? String(Math.round(cu * 100) / 100) : '', basis: 'unite' };
+    }) };
+    BUY.kind = 'bon'; go('buy'); toast('Bon d\'achat prérempli avec les derniers prix : corrigez-les selon la facture du fournisseur.');
+  };
+}
+
+/* ----- Inventaire ----- */
+function invTotal(s) {
+  var o = S.inv[s.id]; if (!o) return null;
+  if (s.kgSac > 0) { if (o.c === '' && o.v === '') return null; return num(o.c) * s.kgSac + num(o.v); }
+  return o.t === '' || o.t === undefined ? null : num(o.t);
+}
+function stockInventaire(c, w) {
+  var cats = ['Toutes'].concat(S.data.categories);
+  c.innerHTML = '<div class="card" style="margin-bottom:12px"><h2>Compter ce qu\'il y a en boutique</h2><div class="hint" style="margin:0">Saisissez la quantité réellement présente. Seuls les produits renseignés sont enregistrés. L\'écart avec le stock calculé devient : <b>stock initial</b> (premier comptage), <b>surplus</b> (en plus) ou <b>perte</b> (en moins, déduite du bénéfice). Le stock initial n\'est pas une dépense.</div></div>' +
+    '<div class="row" style="margin-bottom:6px"><label class="f" style="flex:0 1 170px"><span>Date du comptage</span>' + dateInput('idate', S.invDate) + '</label>' +
+    '<label class="f" style="flex:2 1 200px"><span>Recherche</span><input id="iq" placeholder="🔍 Produit…" value="' + esc(S.invQ) + '"></label>' +
+    '<label class="f" style="flex:1 1 170px"><span>Catégorie</span><select id="icat">' + cats.map(function (x) { return '<option' + (S.invCat === x ? ' selected' : '') + '>' + esc(x) + '</option>'; }).join('') + '</select></label></div>' +
+    '<label style="display:flex;gap:8px;align-items:center;margin:0 0 10px;font-size:14px"><input type="checkbox" id="iall" style="width:20px;height:20px" ' + (S.invAll ? 'checked' : '') + '> Afficher tout le catalogue (sinon : produits de la boutique, c\'est-à-dire avec un prix ou des mouvements)</label>' +
+    '<div class="card scroll" id="itbl"></div>' +
+    '<div style="position:sticky;bottom:70px;margin-top:12px;padding:8px 0;background:var(--bg);z-index:5"><button class="btn big" id="isave">Enregistrer l\'inventaire</button></div>';
+  function visible() {
+    var q = norm(S.invQ);
+    return S.data.stock.filter(function (s) {
+      if (!s.actif) return false;
+      if (S.invCat !== 'Toutes' && s.categorie !== S.invCat) return false;
+      if (q && norm(s.nom).indexOf(q) < 0) return false;
+      if (!S.invAll && !(s.prixVente > 0 || s.prixAchat > 0 || s.entrees || s.ajouts || s.sorties || s.pertes || s.stock !== 0 || S.inv[s.id])) return false;
+      return true;
+    });
+  }
+  function counted() { return S.data.stock.filter(function (s) { return invTotal(s) !== null; }); }
+  function ecartHtml(s) {
+    var t = invTotal(s); if (t === null) return '';
+    var e = Math.round((t - s.stock) * 1000) / 1000;
+    return e === 0 ? '<span style="color:var(--muted)">identique</span>' : '<b style="color:' + (e > 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (e > 0 ? '+' : '') + qty(e) + '</b>' + (e > 0 && !(s.coutMoyen > 0) && !(s.prixAchat > 0) ? '<div><input class="ik" type="number" inputmode="decimal" step="any" min="0" placeholder="Prix d\'achat unitaire" value="' + esc((S.inv[s.id] || {}).cout || '') + '" style="width:130px;padding:5px 7px;margin-top:4px"></div>' : '');
+  }
+  function draw() {
+    var rows = visible();
+    $('#itbl').innerHTML = rows.length ? '<table><thead><tr><th>Produit</th><th class="n">Stock calculé</th><th class="n">Compté</th><th class="n">Écart</th></tr></thead><tbody>' +
+      rows.slice(0, 250).map(function (s) {
+        var o = S.inv[s.id] || { c: '', v: '', t: '' }, pk = s.kgSac > 0, u = esc(s.unite);
+        return '<tr data-id="' + s.id + '"><td><b>' + esc(s.nom) + '</b><div style="font-size:12px;color:var(--muted)">' + esc(s.categorie) + (pk ? ' · ' + qty(s.kgSac) + ' ' + (s.unite === 'kg' ? 'kg' : u) + ' / ' + (s.unite === 'kg' ? 'sac' : 'carton') : '') + '</div></td>' +
+          '<td class="n">' + qty(s.stock) + ' ' + u + '</td><td class="n" style="min-width:170px">' +
+          (pk ? '<input class="ic" type="number" inputmode="decimal" step="any" min="0" placeholder="' + (s.unite === 'kg' ? 'sacs' : 'cartons') + '" value="' + esc(o.c) + '" style="width:72px;text-align:right"> + <input class="iv" type="number" inputmode="decimal" step="any" min="0" placeholder="' + (s.unite === 'kg' ? 'kg' : u) + '" value="' + esc(o.v) + '" style="width:72px;text-align:right"><div class="it" style="font-size:12px;color:var(--muted)">' + (invTotal(s) !== null ? '= ' + qty(invTotal(s)) + ' ' + u : '') + '</div>'
+            : '<input class="itt" type="number" inputmode="decimal" step="any" min="0" placeholder="' + u + '" value="' + esc(o.t) + '" style="width:96px;text-align:right">') + '</td>' +
+          '<td class="n ie">' + ecartHtml(s) + '</td></tr>';
+      }).join('') + '</tbody></table>' + (rows.length > 250 ? '<div class="empty">Affinez la recherche (' + rows.length + ' produits).</div>' : '') : '<div class="empty">Aucun produit. Cochez « Afficher tout le catalogue » ou changez de catégorie.</div>';
+    sum();
+  }
+  function sum() { var n = counted().length; var b = $('#isave'); b.textContent = n ? 'Enregistrer l\'inventaire (' + n + ' produit' + (n > 1 ? 's' : '') + ' compté' + (n > 1 ? 's' : '') + ')' : 'Enregistrer l\'inventaire'; }
+  var box = $('#itbl');
+  function upd(e) {
+    var tr = e.target.closest('tr'); if (!tr) return; var id = tr.dataset.id, s = stockById(id), o = S.inv[id] || (S.inv[id] = { c: '', v: '', t: '', cout: '' }), cl = e.target.classList;
+    if (cl.contains('ic')) o.c = e.target.value; else if (cl.contains('iv')) o.v = e.target.value; else if (cl.contains('itt')) o.t = e.target.value; else if (cl.contains('ik')) { o.cout = e.target.value; return; }
+    var t = invTotal(s), it = $('.it', tr); if (it) it.textContent = t !== null ? '= ' + qty(t) + ' ' + s.unite : '';
+    $('.ie', tr).innerHTML = ecartHtml(s); sum();
+  }
+  box.addEventListener('input', upd);
+  $('#idate').onchange = function () { S.invDate = this.value || today(); };
+  $('#iq').oninput = function () { S.invQ = this.value; draw(); };
+  $('#icat').onchange = function () { S.invCat = this.value; draw(); };
+  $('#iall').onchange = function () { S.invAll = this.checked; draw(); };
+  $('#isave').onclick = function () {
+    var cs = counted(); if (!cs.length) return toast('Saisissez au moins une quantité comptée.', true);
+    var lines = cs.map(function (s) { var o = S.inv[s.id]; return { produitId: s.id, compte: invTotal(s), cout: o && o.cout ? o.cout : undefined }; });
+    var nocost = cs.filter(function (s) { var e = invTotal(s) - s.stock, o = S.inv[s.id]; return e > 0 && !(s.coutMoyen > 0) && !(s.prixAchat > 0) && !(o && num(o.cout) > 0); }).length;
+    if (nocost && !confirm(nocost + ' produit(s) n\'ont pas de prix d\'achat : leur bénéfice sera faussé tant que vous ne le renseignez pas. Enregistrer quand même ?')) return;
+    busy($('#isave'), function () {
+      return api('inventory', { date: S.invDate, lines: lines }).then(function (r) {
+        S.inv = {}; return refresh(true).then(function () {
+          modal('<h2>Inventaire enregistré</h2><div class="sub2"><span>Produits ajoutés au stock</span><b>' + r.ajouts + ' (' + money(r.valeurAjoutee) + ')</b></div><div class="sub2"><span>Écarts en moins (pertes)</span><b>' + r.pertes + ' (' + money(r.valeurPerdue) + ')</b></div><div class="sub2"><span>Comptages identiques</span><b>' + r.inchanges + '</b></div><div class="hint" style="margin-top:10px">Le stock affiché est maintenant celui que vous avez compté. Les ventes et achats suivants le font évoluer.</div><button class="btn big" id="iok" style="margin-top:12px">OK</button>');
+          $('#iok').onclick = function () { closeModal(); render(); };
+        });
+      });
+    });
+  };
+  draw();
+}
+
+/* ----- Fiche de stock ----- */
+function lineChart(pts, unit) {
+  var n = pts.length, W = Math.max(340, Math.min(n * 46 + 80, 900)), H = 220, L = 52, R = 14, T = 22, B = 40;
+  var ys = pts.map(function (p) { return p.y; }), dmax = Math.max.apply(null, ys.concat([0])), dmin = Math.min.apply(null, ys.concat([0]));
+  var step = niceStep(Math.max((dmax - dmin) / 4, 1)), lo = Math.floor(dmin / step) * step, hi = Math.ceil(dmax / step) * step; if (hi === lo) hi = lo + step;
+  var pw = W - L - R, ph = H - T - B, y = function (v) { return T + ph - (v - lo) / (hi - lo) * ph; }, x = function (i) { return L + (n === 1 ? pw / 2 : 22 + (pw - 44) * i / (n - 1)); };
+  var g = '', v0;
+  for (v0 = lo; v0 <= hi + step / 2; v0 += step) g += '<line class="gl" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(v0) + '" y2="' + y(v0) + '" stroke-width="1"/><text class="mut" x="' + (L - 6) + '" y="' + (y(v0) + 4) + '" text-anchor="end" font-size="11">' + compact(v0) + '</text>';
+  var path = pts.map(function (p, i) { return (i ? 'L' : 'M') + x(i) + ' ' + y(p.y); }).join(' '), dots = '', labs = '', every = Math.ceil(n / 8), maxI = ys.indexOf(Math.max.apply(null, ys));
+  pts.forEach(function (p, i) {
+    dots += '<circle cx="' + x(i) + '" cy="' + y(p.y) + '" r="4" fill="var(--sales)" stroke="#000" stroke-width="1"><title>' + esc(p.x + ' : ' + qty(p.y) + ' ' + unit) + '</title></circle>';
+    if (n <= 10 || i === n - 1 || i === 0 || i === maxI) labs += '<text x="' + x(i) + '" y="' + (y(p.y) - 9) + '" text-anchor="middle" font-size="11" font-weight="700">' + qty(p.y) + '</text>';
+    if (i % every === 0 || i === n - 1) labs += '<text x="' + x(i) + '" y="' + (H - B + 18) + '" text-anchor="middle" font-size="11">' + esc(p.x) + '</text>';
+  });
+  return '<div class="chart scroll"><div style="min-width:' + Math.min(W, 900) + 'px"><svg viewBox="0 0 ' + W + ' ' + H + '" role="img" aria-label="Niveau de stock dans le temps">' + g +
+    '<line class="ax" x1="' + L + '" x2="' + L + '" y1="' + T + '" y2="' + (T + ph) + '" stroke-width="1.4"/><line class="ax" x1="' + L + '" x2="' + (W - R) + '" y1="' + y(0) + '" y2="' + y(0) + '" stroke-width="1.4"/>' +
+    '<text class="mut" x="' + L + '" y="12" font-size="11">' + esc(unit) + '</text><path d="' + path + '" fill="none" style="stroke:var(--sales)" stroke-width="2.5"/>' + dots + labs + '</svg></div></div>';
+}
+function stockCardModal(id) {
+  var m = modal('<div class="skel"></div>');
+  api('stockCard', { produitId: id }).then(function (C) {
+    var p = C.produit, s = stockById(id), mv = C.mouvements, byDay = {}, order = [];
+    mv.forEach(function (e) { if (!(e.date in byDay)) order.push(e.date); byDay[e.date] = e.solde; });
+    var pts = order.map(function (d) { return { x: frShort(d), y: byDay[d] }; });
+    var colors = { Vente: 'var(--sales)' };
+    $('.box', m).innerHTML = '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start"><div><h2>' + esc(p.nom) + '</h2><div class="hint" style="margin:0">Fiche de stock : tous les mouvements et le niveau après chacun</div></div><button class="btn sm ghost" id="cx">Fermer ✕</button></div>' +
+      '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(120px,1fr));margin:12px 0"><div class="card"><div class="hint" style="margin:0">Stock actuel</div><b style="font-size:20px">' + qty(C.solde) + ' ' + esc(p.unite) + '</b>' + (s ? packEq(s) : '') + '</div>' +
+      '<div class="card"><div class="hint" style="margin:0">Entrées cumulées</div><b style="font-size:20px;color:var(--ok)">+' + qty(C.entrees) + '</b></div><div class="card"><div class="hint" style="margin:0">Sorties cumulées</div><b style="font-size:20px;color:var(--bad)">−' + qty(C.sorties) + '</b></div>' +
+      (s && s.venteJour > 0 ? '<div class="card"><div class="hint" style="margin:0">Vente / jour · couverture</div><b style="font-size:20px">' + qty(Math.round(s.venteJour * 10) / 10) + ' · ' + (s.couverture !== null && s.stock > 0 ? qty(s.couverture) + ' j' : '—') + '</b></div>' : '') + '</div>' +
+      (pts.length ? '<h3 style="font-size:15px;margin:6px 0">Niveau de stock après chaque jour d\'activité (' + esc(p.unite) + ')</h3>' + lineChart(pts, p.unite) : '') +
+      (mv.length ? '<div class="scroll" style="margin-top:10px"><table><thead><tr><th>Date</th><th>Mouvement</th><th class="n">Quantité</th><th class="n">Solde</th><th>Détail</th></tr></thead><tbody>' +
+        mv.slice().reverse().map(function (e) { return '<tr><td>' + frShort(e.date) + '</td><td>' + esc(e.type) + '</td><td class="n"><b style="color:' + (e.qte > 0 ? 'var(--ok)' : 'var(--bad)') + '">' + (e.qte > 0 ? '+' : '−') + qty(Math.abs(e.qte)) + '</b></td><td class="n"><b>' + qty(e.solde) + '</b></td><td style="font-size:12.5px;color:var(--muted)">' + esc(e.detail) + (e.pu ? (e.detail ? ' · ' : '') + nf2.format(e.pu) + ' F' : '') + '</td></tr>'; }).join('') + '</tbody></table></div>' + (C.tronque ? '<div class="hint">Seuls les 400 derniers mouvements sont affichés.</div>' : '') : '<div class="empty">Aucun mouvement enregistré pour ce produit.</div>');
+    $('#cx').onclick = closeModal;
+  }).catch(function (e) { $('.box', m).innerHTML = '<div class="empty">' + esc(e.message) + '</div><button class="btn big" id="cx">Fermer</button>'; $('#cx').onclick = closeModal; });
+}
+
 function lossModal(id) {
   var p = prodById(id);
   modal('<h2>Déclarer une perte</h2><div class="hint">' + esc(p.nom) + ' : valorisée au coût moyen d\'achat</div>' +
@@ -772,13 +1069,15 @@ function productModal(id) {
     '<label class="f"><span>Prix de vente (FCFA)</span><input id="pv" type="number" inputmode="decimal" step="any" min="0" value="' + (p.prixVente || '') + '"></label></div>' +
     '<div class="row"><label class="f"><span>Contenu d\'un sac / carton (kg ou nombre d\'unités)</span><input id="pk" type="number" inputmode="decimal" step="any" min="0" value="' + (p.kgSac || '') + '" placeholder="ex : 25"></label>' +
     '<label class="f"><span>Seuil d\'alerte stock</span><input id="ps" type="number" inputmode="decimal" step="any" min="0" value="' + (p.seuil || '') + '"></label></div>' +
+    '<label class="f"><span>Stock cible (quantité à avoir après réapprovisionnement, facultatif)</span><input id="pc" type="number" inputmode="decimal" step="any" min="0" value="' + (p.cible || '') + '" placeholder="calcul automatique selon vos ventes"></label>' +
+    '<div class="hint" style="margin-top:-6px">Seuil d\'alerte : sous ce niveau le produit apparaît dans « À acheter ». Sans seuil ni cible, l\'application calcule selon vos ventes (jours de couverture dans Stock > À acheter).</div>' +
     '<div class="row">' +
     '<label class="f"><span>Statut</span><select id="pa2"><option value="1"' + (p.actif ? ' selected' : '') + '>Actif</option><option value="0"' + (!p.actif ? ' selected' : '') + '>Désactivé (masqué à la vente)</option></select></label></div>' +
     '<div class="row"><button class="btn ghost" id="pc1">Annuler</button><button class="btn" id="pc2">Enregistrer</button></div>');
   $('#pc1').onclick = closeModal;
   $('#pc2').onclick = function () {
     busy($('#pc2'), function () {
-      return api('saveProduct', { id: id, nom: $('#pn').value, categorie: $('#pcat').value, unite: $('#pu').value, prixAchat: $('#pa').value, prixVente: $('#pv').value, seuil: $('#ps').value, kgSac: $('#pk').value, actif: $('#pa2').value === '1' }).then(function () {
+      return api('saveProduct', { id: id, nom: $('#pn').value, categorie: $('#pcat').value, unite: $('#pu').value, prixAchat: $('#pa').value, prixVente: $('#pv').value, seuil: $('#ps').value, kgSac: $('#pk').value, cible: $('#pc').value, actif: $('#pa2').value === '1' }).then(function () {
         closeModal(); toast('✅ Produit enregistré'); return refresh();
       });
     });
@@ -858,7 +1157,7 @@ function daysBetween(a, b) { return Math.round((parse(b) - parse(a)) / 864e5); }
 
 /* ===================== Historique ===================== */
 function vHistory(w) {
-  var H = S.hist, T = [['Ventes', 'Ventes'], ['Achats', 'Achats'], ['Depenses', 'Dépenses'], ['Pertes', 'Pertes']];
+  var H = S.hist, T = [['Ventes', 'Ventes'], ['Achats', 'Achats'], ['Depenses', 'Dépenses'], ['Pertes', 'Pertes'], ['Ajustements', 'Stock initial / inventaire']];
   w.innerHTML = head('Historique', 'Consulter, corriger (supprimer puis ressaisir) ou régler un crédit') +
     '<div class="chips">' + T.map(function (t) { return '<button class="chip' + (H.table === t[0] ? ' on' : '') + '" data-t="' + t[0] + '">' + t[1] + '</button>'; }).join('') + '</div>' +
     '<div class="row" style="margin-bottom:10px"><label class="f"><span>Du</span>' + dateInput('hf', H.from) + '</label><label class="f"><span>Au</span>' + dateInput('ht', H.to) + '</label>' +
@@ -871,6 +1170,7 @@ function vHistory(w) {
     Ventes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.note ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.note) + '</div>' : ''); }], ['Qté', function (r) { return qty(r.qte) + (r.nbSacs ? '<div style="font-size:12px;color:var(--muted)">' + qty(r.nbSacs) + ' × ' + qty(r.kgSac) + '</div>' : ''); }, 1], ['PU', function (r) { return nf1.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf.', function (r) { return nf.format(r.qte * (r.pu - r.cout)); }, 1], ['Paiement', function (r) { return r.paiement === 'Crédit' ? '<span class="badge bas">Crédit</span>' : esc(r.paiement); }]],
     Achats: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit) + (r.fournisseur ? '<div style="font-size:12px;color:var(--muted)">' + esc(r.fournisseur) + '</div>' : ''); }], ['Sacs / cartons', function (r) { return r.nbSacs ? qty(r.nbSacs) + ' × ' + qty(r.kgSac) : '—'; }], ['Qté', function (r) { return qty(r.qte); }, 1], ['PU achat', function (r) { return nf2.format(r.pu); }, 1], ['Total', function (r) { return '<b>' + nf.format(r.qte * r.pu) + '</b>'; }, 1], ['Bénéf. prévu', function (r) { var p = prodById(r.produitId); return p && p.prixVente > 0 ? nf.format((p.prixVente - r.pu) * r.qte) : '—'; }, 1]],
     Depenses: [['Date', function (r) { return frShort(r.date); }], ['Catégorie', function (r) { return esc(r.categorie); }], ['Libellé', function (r) { return esc(r.libelle); }], ['Montant', function (r) { return '<b>' + nf.format(r.montant) + '</b>'; }, 1]],
+    Ajustements: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit); }], ['Quantité ajoutée', function (r) { return '<b>+' + qty(r.qte) + '</b>'; }, 1], ['Motif', function (r) { return esc(r.motif); }], ['Coût unitaire', function (r) { return r.cout ? nf2.format(r.cout) : '<span style="color:var(--bad)">à renseigner</span>'; }, 1]],
     Pertes: [['Date', function (r) { return frShort(r.date); }], ['Produit', function (r) { return esc(r.produit); }], ['Qté', function (r) { return qty(r.qte); }, 1], ['Motif', function (r) { return esc(r.motif); }], ['Valeur', function (r) { return '<b>' + nf.format(r.qte * r.cout) + '</b>'; }, 1]]
   }[H.table];
   api('history', { table: H.table, from: H.from, to: H.to }).then(function (rows) {
@@ -885,7 +1185,7 @@ function vHistory(w) {
 /* ===================== Menu « Plus » (mobile) ===================== */
 function vMore(w) {
   w.innerHTML = head('Plus', 'Autres sections') + '<div class="grid" style="grid-template-columns:1fr 1fr">' +
-    [['products', 'Produits et prix'], ['expenses', 'Dépenses'], ['reports', 'Rapports'], ['history', 'Historique']].map(function (n) { return '<button class="card" data-g="' + n[0] + '" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px;cursor:pointer;color:var(--brand);font-weight:700">' + icon(n[0]).replace('<svg', '<svg style="width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.8"') + '<span style="color:var(--ink)">' + n[1] + '</span></button>'; }).join('') +
+    [['reappro', 'À acheter'], ['products', 'Produits et prix'], ['expenses', 'Dépenses'], ['reports', 'Rapports'], ['history', 'Historique']].map(function (n) { return '<button class="card" data-g="' + n[0] + '" style="display:flex;flex-direction:column;align-items:center;gap:8px;padding:22px;cursor:pointer;color:var(--brand);font-weight:700">' + icon(n[0]).replace('<svg', '<svg style="width:34px;height:34px;stroke:currentColor;fill:none;stroke-width:1.8"') + '<span style="color:var(--ink)">' + n[1] + '</span></button>'; }).join('') +
     '<button class="card" id="th2" style="padding:18px;cursor:pointer;grid-column:1/-1;font-weight:600">Basculer thème clair / sombre</button></div>';
   $$('[data-g]', w).forEach(function (b) { b.onclick = function () { go(b.dataset.g); }; });
   $('#th2', w).onclick = function () { $('#theme').click(); };
